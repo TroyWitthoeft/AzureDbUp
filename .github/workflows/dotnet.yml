@@ -31,10 +31,12 @@ jobs:
     - name: Publish
       run: dotnet publish
       
-    - name: Upload a Build Artifact
+    - name: Upload build artifact
       uses: actions/upload-artifact@v2.2.4
       with:
         name: Console app
         path: /home/runner/work/AzureDbUp/AzureDbUp/bin/Debug/net5.0/publish/
         
-      
+    - name: Release
+      uses: softprops/action-gh-release@v0.1.7
+
