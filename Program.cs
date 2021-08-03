@@ -207,9 +207,8 @@ namespace AzureDbUp
             var handler = new JwtSecurityTokenHandler();
             var jsonToken = handler.ReadToken(token) as JwtSecurityToken;
             var upn = jsonToken.Claims.First(x => x.Type == "upn").Value;
-            //AnsiConsole.WriteLine($"Got azure token for identity {upn}");
-            AnsiConsole.WriteLine($"Got azure token for identity troy.witthoeft@bitwit.org");
-
+            AnsiConsole.WriteLine($"Got azure token for identity {upn}");
+        
             // // Serialize and pretty print full json token to log. 
             // var options = new JsonSerializerOptions { WriteIndented = true};
             // var payload = jsonToken.Payload.SerializeToJson();;
