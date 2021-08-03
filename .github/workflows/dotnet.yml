@@ -37,12 +37,12 @@ jobs:
         name: Application
         path: /home/runner/work/AzureDbUp/AzureDbUp/bin/Debug/net5.0/publish/
 
-    - name: Zip files
-      uses: thedoctor0/zip-release@master
-      with:
-        type: 'zip'
-        filename: 'release.zip'
-        exclusions: '*.git* /*node_modules/* .editorconfig'
+#    - name: Zip files
+#      uses: thedoctor0/zip-release@master
+#      with:
+#        type: 'zip'
+#        filename: 'release.zip'
+#        exclusions: '*.git* /*node_modules/* .editorconfig'
 
     - name: Create release
       uses: marvinpinto/action-automatic-releases@v1.2.1
@@ -52,4 +52,4 @@ jobs:
         prerelease: true
         title: "Development Build"
         #files: /home/runner/work/AzureDbUp/AzureDbUp/bin/Debug/net5.0/publish/
-        files: "release.zip"
+        #files: "release.zip"
