@@ -37,19 +37,19 @@ jobs:
         name: Application
         path: /home/runner/work/AzureDbUp/AzureDbUp/bin/Debug/net5.0/publish/
 
-#    - name: Zip files
-#      uses: thedoctor0/zip-release@master
-#      with:
-#        type: 'zip'
-#        filename: 'release.zip'
-#        exclusions: '*.git* /*node_modules/* .editorconfig'
+    - name: Create release zip 
+      uses: thedoctor0/zip-release@master
+      with:
+        type: 'zip'
+        filename: 'latest-release.zip'
+        exclusions: '*.vscode* *.git* /*node_modules/* .editorconfig'
 
-    - name: Create release
-      uses: marvinpinto/action-automatic-releases@v1.2.1
+    - name: Create github release
+      uses: marvinpinto/action-automatic-releases@latest
       with:
         repo_token: ${{ secrets.GITHUB_TOKEN }}
         automatic_release_tag: "latest"
         prerelease: true
         title: "Development Build"
         #files: /home/runner/work/AzureDbUp/AzureDbUp/bin/Debug/net5.0/publish/
-        #files: "release.zip"
+        files: "latest-release.zip"
