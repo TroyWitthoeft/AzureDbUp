@@ -2,8 +2,8 @@
 
 ![Azure DbUp Logo](./img/AzureDbUp-logo.png)
 
-AzureDbUp is a cross-platform console application that updates Azure SQL databases using DbUp. 
-Save your sql scripts into folders, and call this application from the commandline with a connection string to update your target database. 
+AzureDbUp is a run-anywhere cross-platform console application that updates a target Azure SQL databases with sql scripts using DbUp.  
+Download this repository using VS Code.  Download this project, build it, set your connection string in the `launch.json` save your change/migration scripts into a folder and call Devlopers save sql scripts Save your sql scripts into folders, and call this application from the commandline with a connection string to update your target database. 
 
 > `dotnet AzureDbUp.dll --connection-string "Server=tcp:my-example-server.database.windows.net,1433;Initial Catalog=my-example-database"`
 

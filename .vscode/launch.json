@@ -12,8 +12,9 @@
             "program": "${workspaceFolder}/bin/Debug/net5.0/AzureDbUp.dll",
             // TODO: Consider platform specific args? https://code.visualstudio.com/docs/editor/debugging#_platformspecific-properties
             "args": [   
-                "--connection-string","Server=tcp:my-example-server.database.windows.net,1433;Initial Catalog=my-example-database",
-                //"--connection-security","azure",  //options: azure,sql
+                //"--connection-string","Server=tcp:my-example-server.database.windows.net,1433;Database=my-example-database",
+                //"--connection-string","Server=tcp:my-example-server.database.windows.net,1433;Database=my-example-database;User ID=my-username;Password=my-p@ssw0rd",
+                //"--authentication-mode","azure",  //options: azure,other
             ],
             "cwd": "${workspaceFolder}",
             "console": "integratedTerminal",
