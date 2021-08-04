@@ -1,4 +1,4 @@
-name: .NET
+name: .NET 5 Console Application - AzureDbUp
 
 on:
   push:
@@ -7,8 +7,8 @@ on:
     branches: [ main ]
 
 jobs:
-  build:
 
+  build:
     runs-on: ubuntu-latest
 
     steps:
@@ -22,14 +22,22 @@ jobs:
     - name: Restore dependencies
       run: dotnet restore
     
+    
     - name: Build
       run: dotnet build --no-restore
-    
+   
+  test:
+    runs-on: ubuntu-latest
+    steps:
     - name: Test
       run: dotnet test --no-build --verbosity normal
-      
-    - name: Publish
-      run: dotnet publish
+
+
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Publish 
+      run: dotnet publish  #TODO: Publish self-contained for all OS?  dotnet publish -r win-x64, osx-x64
       
     - name: Upload build artifact
       uses: actions/upload-artifact@v2.2.4
