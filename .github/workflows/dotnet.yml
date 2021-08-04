@@ -61,8 +61,18 @@ jobs:
         path: /home/runner/work/AzureDbUp/AzureDbUp/bin/Debug/net5.0/publish/
         
   release: 
-    runs-on: ubunti-latest
+    runs-on: ubuntu-latest
     steps:
+    - uses: actions/checkout@v2
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v1
+      with:
+        dotnet-version: 5.0.x
+    
+    - name: Restore dependencies
+      run: dotnet restore
+    - name: Publish 
+      run: dotnet publish  #TODO: Publish self-contained for all OS?  dotnet publish -r win-x64, osx-x64
     - name: Create release zip 
       uses: thedoctor0/zip-release@master
       with:
