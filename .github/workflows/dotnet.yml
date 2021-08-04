@@ -76,15 +76,16 @@ jobs:
       uses: thedoctor0/zip-release@master
       with:
         type: 'zip'
-        filename: 'latest-release.zip'
+        filename: 'release-latest.zip'
         exclusions: '*.vscode* *.git* /*node_modules/* .editorconfig'
 
     - name: Release
       uses: marvinpinto/action-automatic-releases@latest
       with:
         repo_token: ${{ secrets.GITHUB_TOKEN }}
-        automatic_release_tag: "latest"
+        automatic_release_tag: "release-latest"
         prerelease: false
         title: "Release Build"
         #files: /home/runner/work/AzureDbUp/AzureDbUp/bin/Debug/net5.0/publish/
-        files: "latest-release.zip"
+        files: "release-latest.zip"
+        
