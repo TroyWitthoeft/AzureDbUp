@@ -2,7 +2,15 @@
 
 ![Azure DbUp Logo](./img/AzureDbUp-logo.png)
 
-Update your database from anywhere. AzureDbUp is a dotnet console application that updates your target sql database from the commnand line.  You supply the `connection-string` and `sql-folder-path` and AzureDbUp will use DbUp to perform migration-based updates to your target database. 
+Update your database from anywhere. AzureDbUp is a dotnet console application that updates your target sql database from the commnand line using DbUp.  DbUp tracks which SQL scripts have been run already, and runs the change scripts that are needed to get your database up to date.
+
+## Getting Started
+
+- Clone this repository to VS Code
+- Update the `launch.json` to set your `connection-string` and `sql-folder-path` 
+- Save your .sql files to the sql folder
+- Launch the app in VS Code   
+
 
 > `dotnet AzureDbUp.dll --connection-string "Server=tcp:my-example-server.database.windows.net,1433;Initial Catalog=my-example-database"`
 
