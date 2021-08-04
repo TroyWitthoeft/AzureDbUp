@@ -52,7 +52,7 @@ jobs:
     - name: Restore dependencies
       run: dotnet restore
     - name: Publish 
-      run: dotnet publish  #TODO: Publish self-contained for all OS?  dotnet publish -r win-x64, osx-x64
+      run: dotnet publish  
       
     - name: Upload build artifact
       uses: actions/upload-artifact@v2.2.4
@@ -71,8 +71,7 @@ jobs:
     
     - name: Restore dependencies
       run: dotnet restore
-    - name: Publish 
-      run: dotnet publish  #TODO: Publish self-contained for all OS?  dotnet publish -r win-x64, osx-x64
+
     - name: Create release zip 
       uses: thedoctor0/zip-release@master
       with:
@@ -80,7 +79,7 @@ jobs:
         filename: 'latest-release.zip'
         exclusions: '*.vscode* *.git* /*node_modules/* .editorconfig'
 
-    - name: Create github release
+    - name: Release
       uses: marvinpinto/action-automatic-releases@latest
       with:
         repo_token: ${{ secrets.GITHUB_TOKEN }}
