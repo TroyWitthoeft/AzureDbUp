@@ -1,0 +1,2 @@
+﻿SELECT * FROM schemaversions
+FETCH FIRST 3 ROWS ONLY

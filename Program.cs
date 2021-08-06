@@ -6,7 +6,7 @@ using DbUp.Helpers;
 using DbUp.Support;
 using MsGraph = Microsoft.Graph;
 using Newtonsoft.Json.Linq;
-using Npgsql;
+//using Npgsql;
 using Spectre.Console;
 using System;
 using System.Collections.Generic;
@@ -18,6 +18,7 @@ using System.Linq;
 using System.Net.Http.Headers;
 using System.Threading.Tasks;
 using System.Text.RegularExpressions;
+using System.Data.Common;
 
 namespace AzureDbUp
 {
@@ -30,12 +31,11 @@ namespace AzureDbUp
         /// <param name="useAzureAuth">Database connection authentication mode. Options: yes, no</param>
         static async Task<int> Main(string connectionString, string useAzureAuth)
         {
+            //TODO:  Consider more user options? Override logs, turn on or off? 
+            
             // Print Azure DbUp welcome banner
             var font = FigletFont.Load("fonts/azdbup.flf");
             AnsiConsole.Render(new FigletText(font,"AZURE  DBUP").Color(Color.OrangeRed1));
-
-            //Test postgres
-            TestPostgres(connectionString,useAzureAuth);
             
             // Get the connection string
             if (String.IsNullOrEmpty(connectionString)) {
@@ -43,7 +43,7 @@ namespace AzureDbUp
             }
 
             // Build the connection
-            SqlConnectionStringBuilder sqlConnection = buildConnection(connectionString);
+            //SqlConnectionStringBuilder sqlConnection = buildConnection(connectionString);
 
             // Get DbUp authentication mode
             if (String.IsNullOrEmpty(useAzureAuth)) {
@@ -65,7 +65,7 @@ namespace AzureDbUp
             }            
             
             // Test database connection
-            testConnect(sqlConnection);
+            TestConnect(connectionString);
 
             // Get directory info for sql subfolders
             var cwd = Directory.GetCurrentDirectory();
@@ -100,7 +100,7 @@ namespace AzureDbUp
             // Go time! Execute sql scripts in each folder according to it's options.
             foreach (var scriptFolder in dbUpFolderList)
             {
-                var runScriptsResult = RunScripts(scriptFolder, sqlConnection, useAzureAuth);
+                var runScriptsResult = RunScripts(scriptFolder, connectionString, useAzureAuth);
                 if (!runScriptsResult.Successful)
                 {
                     AnsiConsole.MarkupLine($"[red]{runScriptsResult.Error.Message}[/]"); 
@@ -109,50 +109,6 @@ namespace AzureDbUp
             }
             AnsiConsole.MarkupLine("[blue]All set![/]");
             return 0;
-        }
-
-        private static void TestPostgres(string connectionString, string useAzureAuth)
-        {
-            var connStringBuilder = new NpgsqlConnectionStringBuilder();
-            connStringBuilder.Host = "free-tier.gcp-us-central1.cockroachlabs.cloud";
-            connStringBuilder.Port = 26257;
-            connStringBuilder.SslMode = SslMode.Require;
-            connStringBuilder.Username = "troy";
-            connStringBuilder.Password = "dQQ6oOEJqFnmCUwB";
-            connStringBuilder.Database = "azure-dbup-2845.defaultdb";
-            connStringBuilder.RootCertificate = "~/.postgres/root.crt";
-            connStringBuilder.TrustServerCertificate = true;
-            Simple(connStringBuilder.ConnectionString);
-        }
-
-        static void Simple(string connString)
-        {
-        using (var conn = new NpgsqlConnection(connString))
-        {
-            conn.Open();
-
-            // Create the "accounts" table.
-            new NpgsqlCommand("CREATE TABLE IF NOT EXISTS accounts (id INT PRIMARY KEY, balance INT)", conn).ExecuteNonQuery();
-
-            // Insert two rows into the "accounts" table.
-            using (var cmd = new NpgsqlCommand())
-            {
-            cmd.Connection = conn;
-            cmd.CommandText = "UPSERT INTO accounts(id, balance) VALUES(@id1, @val1), (@id2, @val2)";
-            cmd.Parameters.AddWithValue("id1", 1);
-            cmd.Parameters.AddWithValue("val1", 1000);
-            cmd.Parameters.AddWithValue("id2", 2);
-            cmd.Parameters.AddWithValue("val2", 250);
-            cmd.ExecuteNonQuery();
-            }
-
-            // Print out the balances.
-            System.Console.WriteLine("Initial balances:");
-            using (var cmd = new NpgsqlCommand("SELECT id, balance FROM accounts", conn))
-            using (var reader = cmd.ExecuteReader())
-            while (reader.Read())
-                Console.Write("\taccount {0}: {1}\n", reader.GetValue(0), reader.GetValue(1));
-        }
         }
 
         private static string GetConnectionString(string connectionString)
@@ -171,12 +127,16 @@ namespace AzureDbUp
             return useAzureAuth;
         }
 
-        private static void testConnect(SqlConnectionStringBuilder sqlConnection)
+        private static void TestConnect(string connection)
         {
             //TODO: add azure integrated security config
-            var upgrader = DeployChanges.To.SqlDatabase(sqlConnection.ConnectionString).WithScriptsFromFileSystem("dummypath", new SqlScriptOptions() ).Build();
-            var connectMessage = string.Empty;
-            var connectResult = upgrader.TryConnect(out connectMessage);
+            //var upgrader = DeployChanges.To.SqlDatabase(connection).WithScriptsFromFileSystem("dummypath", new SqlScriptOptions() ).Build();
+            //var mything = DeployChanges.To.PostgresqlDatabase(connection);
+
+            var upgrader = DeployChanges.To.PostgresqlDatabase(connection).WithScript("test select","SELECT 1").Build();
+            var connectErrorMessage = string.Empty;
+            var connectResult = upgrader.TryConnect(out connectErrorMessage);
+            //TODO: If ConnectErrorMessage not empty string, fail. 
         }
 
         private static void ValidagteArguments(string connectionString, string connectionSecurity)
@@ -220,40 +180,39 @@ namespace AzureDbUp
             return scriptFolderList;
         }
 
-        private static SqlConnectionStringBuilder buildConnection(string connectionString)
-        {
-            if (String.IsNullOrEmpty(connectionString))
-            {
-                connectionString = AnsiConsole.Ask<string>("Please enter a connection string: ");
-            }
-            
-            var connection = new SqlConnectionStringBuilder();
-            try
-            {
-                connection = new SqlConnectionStringBuilder(connectionString);
-            }
-            catch (System.Exception ex)
-            { 
-                AnsiConsole.MarkupLine($"[red]We were unable to parse the following connection string: {connectionString}[/]"); 
-                AnsiConsole.MarkupLine($"[red]Is the connection string argument formatted correctly? Example: Server=tcp:my-example-server.database.windows.net,1433;Database=my-example-database[/]");
-                AnsiConsole.MarkupLine($""); 
-                AnsiConsole.WriteException(ex); 
-                throw;
-            }
-            return connection;
-        }
-        // private static string maskConnection(SqlConnectionStringBuilder connection)
+        // private static SqlConnectionStringBuilder buildConnection(string connectionString)
         // {
-        //     if (connection.ContainsKey("password") && connection.Password != String.Empty) 
+        //     if (String.IsNullOrEmpty(connectionString))
         //     {
-        //         connection["password"] = "*****";
+        //         connectionString = AnsiConsole.Ask<string>("Please enter a connection string: ");
         //     }
-        //     return connection.ToString();
+            
+        //     var builder = new DbConnectionStringBuilder();
+        //     builder.ConnectionString = connectionString;
+
+        //     try
+        //     {
+        //         sqlconnection = new SqlConnectionStringBuilder(connectionString);
+        //     }
+        //     catch (System.Exception ex)
+        //     { 
+        //         AnsiConsole.MarkupLine($"[red]We were unable to parse the following connection string: {connectionString}[/]"); 
+        //         AnsiConsole.MarkupLine($"[red]Is the connection string argument formatted correctly? Example: Server=tcp:my-example-server.database.windows.net,1433;Database=my-example-database[/]");
+        //         AnsiConsole.MarkupLine($""); 
+        //         AnsiConsole.WriteException(ex); 
+        //         throw;
+        //     }
+        //     return sqlconnection;
         // }
+        private static string MaskConnection(string connectionString) 
+        {
+            var maskedConnection = Regex.Replace(connectionString, @"(?<=(?<![^;])pass\w*=).*?(?=;[\w\s]+=|$)", "*****", RegexOptions.IgnoreCase);
+            return maskedConnection;
+        }
 
         private static Table GetConnSettingsTable(string connectionString, string useAzureAuth)
         {
-            var maskedConnection = Regex.Replace(connectionString, @"(?<=(?<![^;])pass\w*=).*?(?=;[\w\s]+=|$)", "*****", RegexOptions.IgnoreCase);
+            var maskedConnection = MaskConnection(connectionString);
             var displayConnectionString = maskedConnection;
 
             var settingsDict = new Dictionary<string, string>() {
@@ -346,7 +305,7 @@ namespace AzureDbUp
             return azureSecurityGroupList;
         }
 
-        private static DatabaseUpgradeResult RunScripts(ScriptFolder scriptFolder, SqlConnectionStringBuilder sqlConnection, string useAzureAuth)
+        private static DatabaseUpgradeResult RunScripts(ScriptFolder scriptFolder, string connectionString, string useAzureAuth)
         {
 
             // Set DbUp run options
@@ -362,7 +321,8 @@ namespace AzureDbUp
             }
             var upgradeEngineBuilder = 
                 DeployChanges.To
-                    .SqlDatabase(sqlConnection.ConnectionString,"dbo",useAzureSqlIntegratedSecurity)
+                    //.SqlDatabase(connectionString,"dbo",useAzureSqlIntegratedSecurity)
+                    .PostgresqlDatabase(connectionString)
                     .WithScriptsFromFileSystem(scriptFolder.FolderPath, sqlScriptOptions)
                     .LogToConsole()
                     .LogScriptOutput();
@@ -373,16 +333,16 @@ namespace AzureDbUp
             }
             var upgrader = upgradeEngineBuilder.Build();
             
-            // Test connect
-            var connectMessage = "";
-            AnsiConsole.WriteLine($"Attempting connection to {sqlConnection.InitialCatalog}");
-            var connectResult = upgrader.TryConnect(out connectMessage);  //TODO: Add retries for Azure SQL Serverless cold start? 
-            if (!connectResult)
-            {
-                AnsiConsole.WriteLine($"Connect error message: {connectMessage}");
-                Environment.Exit(-1);
-            }
-            AnsiConsole.WriteLine($"Connection successful!");
+            // // Test connect
+            // var connectMessage = "";
+            // AnsiConsole.WriteLine($"Attempting connection to {MaskConnection(connectionString)}");
+            // var connectResult = upgrader.TryConnect(out connectMessage);  //TODO: Add retries for Azure SQL Serverless cold start? 
+            // if (!connectResult)
+            // {
+            //     AnsiConsole.WriteLine($"Connect error message: {connectMessage}");
+            //     Environment.Exit(-1);
+            // }
+            // AnsiConsole.WriteLine($"Connection successful!");
 
             // Execute the scripts
             AnsiConsole.MarkupLine($"[blue]Running scripts in folder {scriptFolder.FolderPath}[/]");
