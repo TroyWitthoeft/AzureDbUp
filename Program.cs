@@ -27,16 +27,22 @@ namespace AzureDbUp
         /// <summary>
         /// Example terminal command: dotnet AzureDbUp.dll --connection-string "Server=tcp:myserver.database.windows.net,1433;Initial Catalog=mydatabase" --connection-security azure --pre-scripts-path PreScripts/ --scripts-path Scripts/ --sub-scripts-path SubScripts/  
         /// </summary>
+        /// <param name="dbEngine">Database engine. Options: sqlserver, mysql, postgresql</param>
         /// <param name="connectionString">Database connection string. Example: Server=tcp:myserver.database.windows.net,1433;Initial Catalog=mydatabase</param>
         /// <param name="useAzureAuth">Database connection authentication mode. Options: yes, no</param>
-        static async Task<int> Main(string connectionString, string useAzureAuth)
+        static async Task<int> Main(string dbEngine, string connectionString, string useAzureAuth)
         {
             //TODO:  Consider more user options? Override logs, turn on or off? 
             
             // Print Azure DbUp welcome banner
             var font = FigletFont.Load("fonts/azdbup.flf");
             AnsiConsole.Render(new FigletText(font,"AZURE  DBUP").Color(Color.OrangeRed1));
-            
+
+            // Get the database engine
+            if (String.IsNullOrEmpty(dbEngine)) {
+                dbEngine = GetDbEngine(dbEngine);
+            }
+
             // Get the connection string
             if (String.IsNullOrEmpty(connectionString)) {
                 connectionString = GetConnectionString(connectionString);
@@ -100,7 +106,7 @@ namespace AzureDbUp
             // Go time! Execute sql scripts in each folder according to it's options.
             foreach (var scriptFolder in dbUpFolderList)
             {
-                var runScriptsResult = RunScripts(scriptFolder, connectionString, useAzureAuth);
+                var runScriptsResult = RunScripts(scriptFolder, dbEngine, connectionString, useAzureAuth);
                 if (!runScriptsResult.Successful)
                 {
                     AnsiConsole.MarkupLine($"[red]{runScriptsResult.Error.Message}[/]"); 
@@ -109,6 +115,14 @@ namespace AzureDbUp
             }
             AnsiConsole.MarkupLine("[blue]All set![/]");
             return 0;
+        }
+
+        private static string GetDbEngine(string dbEngine)
+        {
+
+            var selectionPrompt = new SelectionPrompt<string>().Title("[OrangeRed1]Select database engine[/]").AddChoices(new string[] {"sqlserver","mysql","postgressql"});
+            var inputResult = AnsiConsole.Prompt(selectionPrompt);
+            return dbEngine;
         }
 
         private static string GetConnectionString(string connectionString)
@@ -305,7 +319,7 @@ namespace AzureDbUp
             return azureSecurityGroupList;
         }
 
-        private static DatabaseUpgradeResult RunScripts(ScriptFolder scriptFolder, string connectionString, string useAzureAuth)
+        private static DatabaseUpgradeResult RunScripts(ScriptFolder scriptFolder, string dbEngine, string connectionString, string useAzureAuth)
         {
 
             // Set DbUp run options
@@ -319,10 +333,25 @@ namespace AzureDbUp
             {
                 useAzureSqlIntegratedSecurity = true;
             }
-            var upgradeEngineBuilder = 
-                DeployChanges.To
-                    //.SqlDatabase(connectionString,"dbo",useAzureSqlIntegratedSecurity)
-                    .PostgresqlDatabase(connectionString)
+            
+            // TODO: factor out this mess
+            var upgradeEngineBuilder = new DbUp.Builder.UpgradeEngineBuilder();
+            if (dbEngine == "postgressql")
+            {
+                upgradeEngineBuilder = DeployChanges.To.PostgresqlDatabase(connectionString);
+            }
+
+            if (dbEngine == "mysql")
+            {
+                upgradeEngineBuilder = DeployChanges.To.MySqlDatabase(connectionString);
+            }
+
+            if (dbEngine == "sqlserver")
+            {
+                upgradeEngineBuilder = DeployChanges.To.SqlDatabase(connectionString);
+            }
+
+            upgradeEngineBuilder =  DeployChanges.To.PostgresqlDatabase(connectionString)
                     .WithScriptsFromFileSystem(scriptFolder.FolderPath, sqlScriptOptions)
                     .LogToConsole()
                     .LogScriptOutput();
@@ -331,18 +360,8 @@ namespace AzureDbUp
             {
                 upgradeEngineBuilder.JournalTo(new NullJournal());
             }
+
             var upgrader = upgradeEngineBuilder.Build();
-            
-            // // Test connect
-            // var connectMessage = "";
-            // AnsiConsole.WriteLine($"Attempting connection to {MaskConnection(connectionString)}");
-            // var connectResult = upgrader.TryConnect(out connectMessage);  //TODO: Add retries for Azure SQL Serverless cold start? 
-            // if (!connectResult)
-            // {
-            //     AnsiConsole.WriteLine($"Connect error message: {connectMessage}");
-            //     Environment.Exit(-1);
-            // }
-            // AnsiConsole.WriteLine($"Connection successful!");
 
             // Execute the scripts
             AnsiConsole.MarkupLine($"[blue]Running scripts in folder {scriptFolder.FolderPath}[/]");

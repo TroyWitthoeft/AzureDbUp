@@ -10,6 +10,7 @@
     <!-- <PackageReference Include="dbup-sqlserver" Version="4.5.0" /> -->
     <PackageReference Include="Azure.Identity" Version="1.4.0" />
     <PackageReference Include="dbup-core" Version="4.5.0" />
+    <PackageReference Include="dbup-mysql" Version="4.5.0" />
     <PackageReference Include="dbup-postgresql" Version="4.5.0" />
     <PackageReference Include="dbup-sqlserver" Version="4.5.0" />
     <PackageReference Include="Microsoft.Data.SqlClient" Version="3.0.0" />
