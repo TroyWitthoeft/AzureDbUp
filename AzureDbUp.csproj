@@ -9,10 +9,14 @@
   <ItemGroup>
     <!-- <PackageReference Include="dbup-sqlserver" Version="4.5.0" /> -->
     <PackageReference Include="Azure.Identity" Version="1.4.0" />
+    <PackageReference Include="dbup-core" Version="4.5.0" />
+    <PackageReference Include="dbup-mysql" Version="4.5.0" />
+    <PackageReference Include="dbup-postgresql" Version="4.5.0" />
     <PackageReference Include="dbup-sqlserver" Version="4.5.0" />
     <PackageReference Include="Microsoft.Data.SqlClient" Version="3.0.0" />
     <PackageReference Include="Microsoft.Graph" Version="3.33.0" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
+    <PackageReference Include="Npgsql" Version="5.0.7" />
     <PackageReference Include="Spectre.Console" Version="0.40.0" />
     <PackageReference Include="System.CommandLine.DragonFruit" Version="0.3.0-*" />   
     <PackageReference Include="System.CommandLine.Experimental" Version="0.3.0-*" />

@@ -1,11 +1,13 @@
 ﻿using Azure.Core;
 using Azure.Identity;
 using DbUp;
+using DbUp.Builder;
 using DbUp.Engine;
 using DbUp.Helpers;
 using DbUp.Support;
 using MsGraph = Microsoft.Graph;
 using Newtonsoft.Json.Linq;
+//using Npgsql;
 using Spectre.Console;
 using System;
 using System.Collections.Generic;
@@ -17,6 +19,9 @@ using System.Linq;
 using System.Net.Http.Headers;
 using System.Threading.Tasks;
 using System.Text.RegularExpressions;
+using System.Data.Common;
+using System.Reflection;
+using System.Collections;
 
 namespace AzureDbUp
 {
@@ -25,50 +30,45 @@ namespace AzureDbUp
         /// <summary>
         /// Example terminal command: dotnet AzureDbUp.dll --connection-string "Server=tcp:myserver.database.windows.net,1433;Initial Catalog=mydatabase" --connection-security azure --pre-scripts-path PreScripts/ --scripts-path Scripts/ --sub-scripts-path SubScripts/  
         /// </summary>
+        /// <param name="dbEngine">Database engine. Options: SqlServer, MySql, PostgreSql</param>
         /// <param name="connectionString">Database connection string. Example: Server=tcp:myserver.database.windows.net,1433;Initial Catalog=mydatabase</param>
-        /// <param name="useAzureAuth">Database connection authentication mode. Options: yes, no</param>
-        static async Task<int> Main(string connectionString, string useAzureAuth)
+        /// <param name="authMode">Database connection authentication mode. Options: azure, sql</param>
+        static async Task<int> Main(string dbEngine, string connectionString, string authMode)
         {
+            //TODO:  Consider more user options? Feature flags?  Override logs, turn on or off?  
+            
             // Print Azure DbUp welcome banner
             var font = FigletFont.Load("fonts/azdbup.flf");
             AnsiConsole.Render(new FigletText(font,"AZURE  DBUP").Color(Color.OrangeRed1));
 
-            // Get the connection string
-            if (String.IsNullOrEmpty(connectionString)) {
-                connectionString = GetConnectionString(connectionString);
-            }
+            dbEngine = GetDbEngine(dbEngine);
+            connectionString = GetConnectionString(connectionString);
+            authMode = GetAuthMode(authMode);
 
-            // Build the connection
-            SqlConnectionStringBuilder sqlConnection = buildConnection(connectionString);
-
-            // Get DbUp authentication mode
-            if (String.IsNullOrEmpty(useAzureAuth)) {
-                useAzureAuth = GetAuthMode(useAzureAuth);
-            }
             
-            // Display conn settings
-            var connSettingsTable = GetConnSettingsTable(connectionString,useAzureAuth);
-            AnsiConsole.Render(connSettingsTable);            
-
-            // Check azure ad connection
-            if (useAzureAuth.Equals("yes",StringComparison.InvariantCultureIgnoreCase))
-            {
-                AnsiConsole.WriteLine($"Testing connection to azure security ...");
-                var credential = new DefaultAzureCredential();
-                var token = await GetToken(credential);
-                var name = GetNameFromToken(token);
-                //var securityGroups = await GetAzureSecurityGroups(credential);  //TODO: 
-            }            
+            // Print conn settings table
+            var connSettingsTable = GetConnSettingsTable(dbEngine,connectionString,authMode);
+            AnsiConsole.Render(connSettingsTable);                      
             
             // Test database connection
-            testConnect(sqlConnection);
+            var connectErrorMessage = await TestConnect(dbEngine,connectionString, authMode);
+            if (!String.IsNullOrEmpty(connectErrorMessage))
+            {
+                AnsiConsole.WriteLine($"{connectErrorMessage}");
+                return -1;
+            }
+            else 
+            {
+                AnsiConsole.MarkupLine($"[green]Test connection successful![/]");
+            }
 
             // Get directory info for sql subfolders
             var cwd = Directory.GetCurrentDirectory();
+            AnsiConsole.MarkupLine($"Looking for .sql files ...");
             var sqlFolderList = new List<string>();
             try
             {
-                sqlFolderList = Directory.GetDirectories("sql").ToList(); //TODO: Make this foldername configurable? Add to command line?
+                sqlFolderList = Directory.GetDirectories("sql").ToList(); //TODO: Make this foldername configurable? Add as a user command line input?
             }
             catch (System.Exception)
             {
@@ -87,16 +87,14 @@ namespace AzureDbUp
                 return -1;
             }
 
-
             var dbUpFolderSettingsTable = GetDbUpFolderSettingsTable(dbUpFolderList);
             AnsiConsole.Render(dbUpFolderSettingsTable);
-         
-
-            
-            // Go time! Execute sql scripts in each folder according to it's options.
+                     
+            // GO TIME! 
+            // Execute sql scripts in each folder according to it's options.
             foreach (var scriptFolder in dbUpFolderList)
             {
-                var runScriptsResult = RunScripts(scriptFolder, sqlConnection, useAzureAuth);
+                var runScriptsResult = RunScripts(scriptFolder, dbEngine, connectionString, authMode);
                 if (!runScriptsResult.Successful)
                 {
                     AnsiConsole.MarkupLine($"[red]{runScriptsResult.Error.Message}[/]"); 
@@ -107,28 +105,68 @@ namespace AzureDbUp
             return 0;
         }
 
+        private static string GetDbEngine(string dbEngine)
+        {
+            var dbEngineList = typeof(DbEngine).GetFields().Select(x => x.GetValue(null).ToString()).ToList();  //Using reflection to get string constant values from class.
+            var listHasEngine = dbEngineList.Contains(dbEngine);
+            if (!String.IsNullOrEmpty(dbEngine) && !listHasEngine)
+            {
+                AnsiConsole.MarkupLine($"AzureDbUp doesn't support engine [Blue]{dbEngine}[/] yet.  Pick one from a list ..."); 
+            }
+            if (listHasEngine == false)
+            {
+                var selectionPrompt = new SelectionPrompt<string>().Title("[Blue]Select database engine[/]").AddChoices(dbEngineList);
+                dbEngine = AnsiConsole.Prompt(selectionPrompt);
+                AnsiConsole.MarkupLine($"Using db-engine: [Blue]{dbEngine}[/]");                
+            }
+            return dbEngine;
+        }
+
         private static string GetConnectionString(string connectionString)
         {
-            connectionString = AnsiConsole.Ask<string>("Please enter a connection string: ");
+            if (String.IsNullOrEmpty(connectionString))
+            {            
+                connectionString = AnsiConsole.Ask<string>("Please enter a connection string: ");
+                AnsiConsole.MarkupLine($"Using connection-string: [Blue]{connectionString}[/]"); 
+            }
             return connectionString;
         }
 
-        private static string GetAuthMode(string useAzureAuth)
+        private static string GetAuthMode(string authMode)
         {
-            //useAzureAuth = AnsiConsole.Prompt(new TextPrompt<string>("Use azure authentication?").InvalidChoiceMessage("[red]That's not a valid choice[/]").DefaultValue("yes").AddChoice("no"));
-            if (AnsiConsole.Confirm("Use azure authentication?"))
+            var authModeList = typeof(AuthMode).GetFields().Select(x => x.GetValue(null).ToString()).ToList();  
+            var listHasAuthMode = authModeList.Contains(authMode);
+            if (!String.IsNullOrEmpty(authMode) && !listHasAuthMode)
             {
-                useAzureAuth = "yes";
+                AnsiConsole.MarkupLine($"AzureDbUp doesn't support auth mode [Blue]{authMode}[/].  Pick one from a list ..."); 
             }
-            return useAzureAuth;
+            if (listHasAuthMode == false)
+            {
+                var selectionPrompt = new SelectionPrompt<string>().Title("[blue]Select authentication mode[/]").AddChoices(authModeList);
+                authMode = AnsiConsole.Prompt(selectionPrompt);
+                AnsiConsole.MarkupLine($"Using auth-mode: [blue]{authMode}[/]");
+            }
+            return authMode;
         }
 
-        private static void testConnect(SqlConnectionStringBuilder sqlConnection)
+        private static async Task<string> TestConnect(string dbEngine, string connection, string authMode)
         {
-            //TODO: add azure integrated security config
-            var upgrader = DeployChanges.To.SqlDatabase(sqlConnection.ConnectionString).WithScriptsFromFileSystem("dummypath", new SqlScriptOptions() ).Build();
-            var connectMessage = string.Empty;
-            var connectResult = upgrader.TryConnect(out connectMessage);
+            // Check azure ad connection
+            if (authMode.Equals(AuthMode.AzureAuth,StringComparison.InvariantCultureIgnoreCase))
+            {
+                AnsiConsole.WriteLine($"Testing connection to azure security ...");
+                var credential = new DefaultAzureCredential();
+                var token = await GetToken(credential);
+                var name = GetNameFromToken(token);
+                //var securityGroups = await GetAzureSecurityGroups(credential);  // TODO: Should we list AAD groups?  Future Feature flag?
+            }  
+
+            var upgradeEngineBuilder = GetUpgradeEngineBuilder(dbEngine, connection, authMode);
+            AnsiConsole.WriteLine($"Testing connection to {dbEngine} ...");            
+            var upgrader = upgradeEngineBuilder.WithScript("DbUp test connect","SELECT 1").Build();
+            var connectErrorMessage = string.Empty;
+            var connectResult = upgrader.TryConnect(out connectErrorMessage);
+            return connectErrorMessage;
         }
 
         private static void ValidagteArguments(string connectionString, string connectionSecurity)
@@ -137,7 +175,6 @@ namespace AzureDbUp
             {
                 AnsiConsole.MarkupLine("[red]Please set a connection string on the command line.[/]");
                 AnsiConsole.MarkupLine("[red]Please set a connection string on the command line.[/]");
-                //--connection-string "Server=tcp:my-example-server.database.windows.net,1433;Initial Catalog=my-example-database"
             }
         }
 
@@ -172,48 +209,25 @@ namespace AzureDbUp
             return scriptFolderList;
         }
 
-        private static SqlConnectionStringBuilder buildConnection(string connectionString)
+        private static string MaskConnection(string connectionString) 
         {
-            if (String.IsNullOrEmpty(connectionString))
-            {
-                connectionString = AnsiConsole.Ask<string>("Please enter a connection string: ");
-            }
-            
-            var connection = new SqlConnectionStringBuilder();
-            try
-            {
-                connection = new SqlConnectionStringBuilder(connectionString);
-            }
-            catch (System.Exception ex)
-            { 
-                AnsiConsole.MarkupLine($"[red]We were unable to parse the following connection string: {connectionString}[/]"); 
-                AnsiConsole.MarkupLine($"[red]Is the connection string argument formatted correctly? Example: Server=tcp:my-example-server.database.windows.net,1433;Database=my-example-database[/]");
-                AnsiConsole.MarkupLine($""); 
-                AnsiConsole.WriteException(ex); 
-                throw;
-            }
-            return connection;
-        }
-        // private static string maskConnection(SqlConnectionStringBuilder connection)
-        // {
-        //     if (connection.ContainsKey("password") && connection.Password != String.Empty) 
-        //     {
-        //         connection["password"] = "*****";
-        //     }
-        //     return connection.ToString();
-        // }
-
-        private static Table GetConnSettingsTable(string connectionString, string useAzureAuth)
-        {
+            // Regex magic.  Mask the password.
             var maskedConnection = Regex.Replace(connectionString, @"(?<=(?<![^;])pass\w*=).*?(?=;[\w\s]+=|$)", "*****", RegexOptions.IgnoreCase);
+            return maskedConnection;
+        }
+
+        private static Table GetConnSettingsTable(string dbEngine, string connectionString, string authMode)
+        {
+            var maskedConnection = MaskConnection(connectionString);
             var displayConnectionString = maskedConnection;
 
             var settingsDict = new Dictionary<string, string>() {
-                { "connection string", displayConnectionString},
-                { "use azure auth?", useAzureAuth}
+                { "db-engine", dbEngine},
+                { "connection-string", displayConnectionString},
+                { "auth-mode", authMode}
             };
 
-            var settingsList = settingsDict.ToList();
+            var settingsList = settingsDict.Where(x => !String.IsNullOrEmpty(x.Value)).ToList();
            
             var settingTable = new Table();
             settingTable.AddColumn(new TableColumn(new Markup("[OrangeRed1]Setting[/]")));
@@ -227,10 +241,10 @@ namespace AzureDbUp
         {
             var sqlFoldersTable = new Table();
             sqlFoldersTable.AddColumn(new TableColumn(new Markup("[OrangeRed1]Sql folder[/]")));
-            sqlFoldersTable.AddColumn(new TableColumn("[Blue]Log run[/]"));
+            sqlFoldersTable.AddColumn(new TableColumn("[Blue]File count [/]"));
             sqlFoldersTable.AddColumn(new TableColumn("[Blue]Always run[/]"));
-            sqlFoldersTable.AddColumn(new TableColumn("[Blue]File count[/]"));
-            dbUpFolderList.ForEach(folder => {sqlFoldersTable.AddRow(folder.FolderPath,folder.LogRun.ToString(),folder.RunAlways.ToString(),folder.SqlFileCount.ToString());});
+            sqlFoldersTable.AddColumn(new TableColumn("[Blue]Log run[/]"));
+            dbUpFolderList.ForEach(folder => {sqlFoldersTable.AddRow(folder.FolderPath,folder.SqlFileCount.ToString(),folder.RunAlways.ToString(),folder.LogRun.ToString());});
             return sqlFoldersTable;
         }
         private static async Task<string> GetToken(DefaultAzureCredential credential)
@@ -257,9 +271,9 @@ namespace AzureDbUp
             var handler = new JwtSecurityTokenHandler();
             var jsonToken = handler.ReadToken(token) as JwtSecurityToken;
             var upn = jsonToken.Claims.First(x => x.Type == "upn").Value;
-            AnsiConsole.WriteLine($"Got azure token for identity {upn}");
+            AnsiConsole.MarkupLine($"Got azure token for identity [blue]{upn}[/]");
         
-            // // Serialize and pretty print full json token to log. 
+            // // TODO: Make this an option? Serialize and pretty print full json token to log?  Feature flag?
             // var options = new JsonSerializerOptions { WriteIndented = true};
             // var payload = jsonToken.Payload.SerializeToJson();;
             // var json = JToken.Parse(payload).ToString();
@@ -298,7 +312,7 @@ namespace AzureDbUp
             return azureSecurityGroupList;
         }
 
-        private static DatabaseUpgradeResult RunScripts(ScriptFolder scriptFolder, SqlConnectionStringBuilder sqlConnection, string useAzureAuth)
+        private static DatabaseUpgradeResult RunScripts(ScriptFolder scriptFolder, string dbEngine, string connectionString, string authMode)
         {
 
             // Set DbUp run options
@@ -307,39 +321,59 @@ namespace AzureDbUp
             {
                 sqlScriptOptions.ScriptType = ScriptType.RunAlways;
             }
-            bool useAzureSqlIntegratedSecurity = false;
-            if (String.Equals(useAzureAuth, "yes"))
-            {
-                useAzureSqlIntegratedSecurity = true;
-            }
-            var upgradeEngineBuilder = 
-                DeployChanges.To
-                    .SqlDatabase(sqlConnection.ConnectionString,"dbo",useAzureSqlIntegratedSecurity)
-                    .WithScriptsFromFileSystem(scriptFolder.FolderPath, sqlScriptOptions)
-                    .LogToConsole()
-                    .LogScriptOutput();
+            
+            var upgradeEngineBuilder = GetUpgradeEngineBuilder(dbEngine,connectionString,authMode);
+            upgradeEngineBuilder.WithScriptsFromFileSystem(scriptFolder.FolderPath, sqlScriptOptions).LogToConsole().LogScriptOutput();
             
             if (!scriptFolder.LogRun)
             {
                 upgradeEngineBuilder.JournalTo(new NullJournal());
             }
+
             var upgrader = upgradeEngineBuilder.Build();
-            
-            // Test connect
-            var connectMessage = "";
-            AnsiConsole.WriteLine($"Attempting connection to {sqlConnection.InitialCatalog}");
-            var connectResult = upgrader.TryConnect(out connectMessage);  //TODO: Add retries for Azure SQL Serverless cold start? 
-            if (!connectResult)
-            {
-                AnsiConsole.WriteLine($"Connect error message: {connectMessage}");
-                Environment.Exit(-1);
-            }
-            AnsiConsole.WriteLine($"Connection successful!");
 
             // Execute the scripts
             AnsiConsole.MarkupLine($"[blue]Running scripts in folder {scriptFolder.FolderPath}[/]");
             var result = upgrader.PerformUpgrade();
             return result;
         }
+
+        private static UpgradeEngineBuilder GetUpgradeEngineBuilder(string dbEngine, string connectionString, string authMode)
+        {
+            var upgradeEngineBuilder = new UpgradeEngineBuilder();
+            // TODO: Create IDbEngine interface and have implementations of each specific db engine?
+            if (dbEngine == DbEngine.PostgresSql)
+            {
+                upgradeEngineBuilder = DeployChanges.To.PostgresqlDatabase(connectionString);
+            }
+
+            if (dbEngine == DbEngine.MySql)
+            {
+                upgradeEngineBuilder = DeployChanges.To.MySqlDatabase(connectionString);
+            }
+
+            if (dbEngine == DbEngine.SqlServer)
+            {
+                var useAzureSqlIntegratedSecurity = false;
+                useAzureSqlIntegratedSecurity = authMode == AuthMode.AzureAuth ? true : false;
+                upgradeEngineBuilder = DeployChanges.To.SqlDatabase(connectionString,null,useAzureSqlIntegratedSecurity);
+            }
+            return upgradeEngineBuilder;
+        }
+
+        
+        public class DbEngine
+        {
+            public const string SqlServer = "sqlserver";
+            public const string MySql = "mysql";
+            public const string PostgresSql = "postgresql";
+        }
+
+        public class AuthMode
+        {
+            public const string AzureAuth = "azure";
+            public const string SqlAuth = "sql";
+        }
+
     }
 }
