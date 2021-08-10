@@ -1,6 +1,7 @@
 ﻿using Azure.Core;
 using Azure.Identity;
 using DbUp;
+using DbUp.Builder;
 using DbUp.Engine;
 using DbUp.Helpers;
 using DbUp.Support;
@@ -48,30 +49,22 @@ namespace AzureDbUp
                 connectionString = GetConnectionString(connectionString);
             }
 
-            // Build the connection
-            //SqlConnectionStringBuilder sqlConnection = buildConnection(connectionString);
-
-            // Get DbUp authentication mode
+            // Get the authentication mode
             if (String.IsNullOrEmpty(useAzureAuth)) {
                 useAzureAuth = GetAuthMode(useAzureAuth);
             }
             
-            // Display conn settings
+            // Print conn settings table
             var connSettingsTable = GetConnSettingsTable(connectionString,useAzureAuth);
-            AnsiConsole.Render(connSettingsTable);            
-
-            // Check azure ad connection
-            if (useAzureAuth.Equals("yes",StringComparison.InvariantCultureIgnoreCase))
-            {
-                AnsiConsole.WriteLine($"Testing connection to azure security ...");
-                var credential = new DefaultAzureCredential();
-                var token = await GetToken(credential);
-                var name = GetNameFromToken(token);
-                //var securityGroups = await GetAzureSecurityGroups(credential);  //TODO: 
-            }            
+            AnsiConsole.Render(connSettingsTable);                      
             
             // Test database connection
-            TestConnect(connectionString);
+            var connectErrorMessage = await TestConnect(dbEngine,connectionString, useAzureAuth);
+            if (!String.IsNullOrEmpty(connectErrorMessage))
+            {
+                AnsiConsole.MarkupLine($"[/red]{connectErrorMessage}[/]");
+                return -1;
+            }
 
             // Get directory info for sql subfolders
             var cwd = Directory.GetCurrentDirectory();
@@ -103,7 +96,8 @@ namespace AzureDbUp
          
 
             
-            // Go time! Execute sql scripts in each folder according to it's options.
+            // GO TIME! 
+            // Execute sql scripts in each folder according to it's options.
             foreach (var scriptFolder in dbUpFolderList)
             {
                 var runScriptsResult = RunScripts(scriptFolder, dbEngine, connectionString, useAzureAuth);
@@ -141,15 +135,22 @@ namespace AzureDbUp
             return useAzureAuth;
         }
 
-        private static void TestConnect(string connection)
+        private static async Task<string> TestConnect(string dbEngine, string connection, string useAzureAuth)
         {
-            //TODO: add azure integrated security config
-            //var upgrader = DeployChanges.To.SqlDatabase(connection).WithScriptsFromFileSystem("dummypath", new SqlScriptOptions() ).Build();
-            //var mything = DeployChanges.To.PostgresqlDatabase(connection);
+            // Check azure ad connection
+            if (useAzureAuth.Equals("yes",StringComparison.InvariantCultureIgnoreCase))
+            {
+                AnsiConsole.WriteLine($"Testing connection to azure security ...");
+                var credential = new DefaultAzureCredential();
+                var token = await GetToken(credential);
+                var name = GetNameFromToken(token);
+                //var securityGroups = await GetAzureSecurityGroups(credential);  //TODO: 
+            }  
 
             var upgrader = DeployChanges.To.PostgresqlDatabase(connection).WithScript("test select","SELECT 1").Build();
             var connectErrorMessage = string.Empty;
             var connectResult = upgrader.TryConnect(out connectErrorMessage);
+            return connectErrorMessage;
             //TODO: If ConnectErrorMessage not empty string, fail. 
         }
 
@@ -335,21 +336,7 @@ namespace AzureDbUp
             }
             
             // TODO: factor out this mess
-            var upgradeEngineBuilder = new DbUp.Builder.UpgradeEngineBuilder();
-            if (dbEngine == "postgressql")
-            {
-                upgradeEngineBuilder = DeployChanges.To.PostgresqlDatabase(connectionString);
-            }
-
-            if (dbEngine == "mysql")
-            {
-                upgradeEngineBuilder = DeployChanges.To.MySqlDatabase(connectionString);
-            }
-
-            if (dbEngine == "sqlserver")
-            {
-                upgradeEngineBuilder = DeployChanges.To.SqlDatabase(connectionString);
-            }
+            var upgradeEngineBuilder = GetUpgradeEngineBuilder(dbEngine,connectionString);
 
             upgradeEngineBuilder =  DeployChanges.To.PostgresqlDatabase(connectionString)
                     .WithScriptsFromFileSystem(scriptFolder.FolderPath, sqlScriptOptions)
@@ -368,5 +355,41 @@ namespace AzureDbUp
             var result = upgrader.PerformUpgrade();
             return result;
         }
+
+        private static UpgradeEngineBuilder GetUpgradeEngineBuilder(string dbEngine, string connectionString)
+        {
+            var upgradeEngineBuilder = new UpgradeEngineBuilder();
+            if (dbEngine == "postgressql")
+            {
+                upgradeEngineBuilder = DeployChanges.To.PostgresqlDatabase(connectionString);
+            }
+
+            if (dbEngine == "mysql")
+            {
+                upgradeEngineBuilder = DeployChanges.To.MySqlDatabase(connectionString);
+            }
+
+            if (dbEngine == "sqlserver")
+            {
+                upgradeEngineBuilder = DeployChanges.To.SqlDatabase(connectionString);
+            }
+
+            return upgradeEngineBuilder;
+        }
+
+        // public static class DbEngine
+        // {
+        //     public const string SqlServer = "SQL Server";
+        //     public const string MySql = "MySQL";
+        //     public const string PostGresSql = "PostgreSQL";
+        // }
+
+        public enum DbEngine
+        {
+            SqlServer = 1,
+            MySql = 2,
+            PostGresSql = 3
+        }
+
     }
 }
