@@ -20,6 +20,7 @@ using System.Net.Http.Headers;
 using System.Threading.Tasks;
 using System.Text.RegularExpressions;
 using System.Data.Common;
+using System.Reflection;
 
 namespace AzureDbUp
 {
@@ -113,9 +114,10 @@ namespace AzureDbUp
 
         private static string GetDbEngine(string dbEngine)
         {
-
-            var selectionPrompt = new SelectionPrompt<string>().Title("[OrangeRed1]Select database engine[/]").AddChoices(new string[] {"sqlserver","mysql","postgressql"});
-            var inputResult = AnsiConsole.Prompt(selectionPrompt);
+            var dbEngines = GetConstants<DbEngine>();
+            var selectionPrompt = new SelectionPrompt<string>().Title("[OrangeRed1]Select database engine[/]").AddChoices(dbEngines);
+            dbEngine = AnsiConsole.Prompt(selectionPrompt);
+            AnsiConsole.MarkupLine($"Configuring connection manager for [blue]{dbEngine}[/] ");
             return dbEngine;
         }
 
@@ -147,7 +149,12 @@ namespace AzureDbUp
                 //var securityGroups = await GetAzureSecurityGroups(credential);  //TODO: 
             }  
 
-            var upgrader = DeployChanges.To.PostgresqlDatabase(connection).WithScript("test select","SELECT 1").Build();
+            var upgradeEngineBuilder = GetUpgradeEngineBuilder(dbEngine, connection);
+            var upgrader = upgradeEngineBuilder.WithScript("test select","SELECT 1").Build();
+            
+            //var upgrader = DeployChanges.To.PostgresqlDatabase(connection).WithScript("test select","SELECT 1").Build();
+
+
             var connectErrorMessage = string.Empty;
             var connectResult = upgrader.TryConnect(out connectErrorMessage);
             return connectErrorMessage;
@@ -337,11 +344,12 @@ namespace AzureDbUp
             
             // TODO: factor out this mess
             var upgradeEngineBuilder = GetUpgradeEngineBuilder(dbEngine,connectionString);
+            upgradeEngineBuilder.WithScriptsFromFileSystem(scriptFolder.FolderPath, sqlScriptOptions).LogToConsole().LogScriptOutput();
 
-            upgradeEngineBuilder =  DeployChanges.To.PostgresqlDatabase(connectionString)
-                    .WithScriptsFromFileSystem(scriptFolder.FolderPath, sqlScriptOptions)
-                    .LogToConsole()
-                    .LogScriptOutput();
+            // upgradeEngineBuilder =  DeployChanges.To.PostgresqlDatabase(connectionString)
+            //         .WithScriptsFromFileSystem(scriptFolder.FolderPath, sqlScriptOptions)
+            //         .LogToConsole()
+            //         .LogScriptOutput();
             
             if (!scriptFolder.LogRun)
             {
@@ -359,37 +367,37 @@ namespace AzureDbUp
         private static UpgradeEngineBuilder GetUpgradeEngineBuilder(string dbEngine, string connectionString)
         {
             var upgradeEngineBuilder = new UpgradeEngineBuilder();
-            if (dbEngine == "postgressql")
+            // TODO: Use ugly switch statement?  Use polymorphism?  Create IDbEngine intraface and have implementations of each specific db engine?
+            if (dbEngine == DbEngine.PostGresSql)
             {
                 upgradeEngineBuilder = DeployChanges.To.PostgresqlDatabase(connectionString);
             }
 
-            if (dbEngine == "mysql")
+            if (dbEngine == DbEngine.MySql)
             {
                 upgradeEngineBuilder = DeployChanges.To.MySqlDatabase(connectionString);
             }
 
-            if (dbEngine == "sqlserver")
+            if (dbEngine == DbEngine.SqlServer)
             {
                 upgradeEngineBuilder = DeployChanges.To.SqlDatabase(connectionString);
             }
-
             return upgradeEngineBuilder;
         }
 
-        // public static class DbEngine
-        // {
-        //     public const string SqlServer = "SQL Server";
-        //     public const string MySql = "MySQL";
-        //     public const string PostGresSql = "PostgreSQL";
-        // }
-
-        public enum DbEngine
+        
+        public class DbEngine
         {
-            SqlServer = 1,
-            MySql = 2,
-            PostGresSql = 3
+            public const string SqlServer = "SQL Server";
+            public const string MySql = "MySQL";
+            public const string PostGresSql = "PostgreSQL";
         }
+
+        private static IEnumerable<string> GetConstants<T>()
+        => typeof(T).GetFields(BindingFlags.Public | BindingFlags.Static | BindingFlags.FlattenHierarchy)
+            .Where(x => x.FieldType == typeof(string) && x.IsLiteral && !x.IsInitOnly)
+            .Select(x => x.GetValue(null) as string);
+
 
     }
 }
