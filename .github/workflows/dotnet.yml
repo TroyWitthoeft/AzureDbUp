@@ -3,7 +3,7 @@ name: .NET 5 Console Application - AzureDbUp
 on:
   push:
     branches: [ main ]
-  #TODO: Trigger on merge complete.
+  #TODO: Trigger on merge complete?
   pull_request:
     branches: [ main ]
 
