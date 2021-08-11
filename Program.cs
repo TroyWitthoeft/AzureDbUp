@@ -28,28 +28,33 @@ namespace AzureDbUp
     class Program
     {
         /// <summary>
-        /// Example terminal command: dotnet AzureDbUp.dll --connection-string "Server=tcp:myserver.database.windows.net,1433;Initial Catalog=mydatabase" --connection-security azure --pre-scripts-path PreScripts/ --scripts-path Scripts/ --sub-scripts-path SubScripts/  
+        /// AzureDbUp is a dotnet console application that updates your target sql database from the commnand line using DbUp.  
+        /// DbUp tracks which SQL scripts have been run already, and runs the change scripts that are needed to get your database up to date.
+        ///
+        /// Example terminal command: dotnet AzureDbUp.dll
+        /// Example terminal command with parameters: dotnet AzureDbUp.dll 
         /// </summary>
-        /// <param name="dbEngine">Database engine. Options: SqlServer, MySql, PostgreSql</param>
-        /// <param name="connectionString">Database connection string. Example: Server=tcp:myserver.database.windows.net,1433;Initial Catalog=mydatabase</param>
-        /// <param name="authMode">Database connection authentication mode. Options: azure, sql</param>
-        static async Task<int> Main(string dbEngine, string connectionString, string authMode)
+        /// <param name="dbEngine">Required. Database engine. Options: sqlserver, mysql, postgresql</param>
+        /// <param name="connectionString">Required. Database connection string. Example: Server=tcp:myserver.database.windows.net,1433;Initial Catalog=mydatabase</param>
+        /// <param name="authMode">Required. Database connection authentication mode. Options: azure, sql</param>
+        /// <param name="sqlFolder">Optional. Relative or absolute path to folder with sql scripts. Defaults to sql. Example: sql, C:\AzureDbUp\sql </param>
+        static async Task<int> Main(string dbEngine, string connectionString, string authMode, string sqlFolder = "sql")
         {
-            //TODO:  Consider more user options? Feature flags?  Override logs, turn on or off?  
-            
+            //TODO:  Consider more user options for controlling DbUp behavior? Feature flags?  Silence dbup logs? 
+
             // Print Azure DbUp welcome banner
             var font = FigletFont.Load("fonts/azdbup.flf");
-            AnsiConsole.Render(new FigletText(font,"AZURE  DBUP").Color(Color.OrangeRed1));
+            AnsiConsole.Render(new FigletText(font,"AZURE  DBUP").Color(Color.OrangeRed1));  //TODO:  Instead of figlet, just a simple blue/orange dbup logo ASCII art? 
 
+            // Get database connection settings
             dbEngine = GetDbEngine(dbEngine);
             connectionString = GetConnectionString(connectionString);
             authMode = GetAuthMode(authMode);
 
-            
             // Print conn settings table
             var connSettingsTable = GetConnSettingsTable(dbEngine,connectionString,authMode);
-            AnsiConsole.Render(connSettingsTable);                      
-            
+            AnsiConsole.Render(connSettingsTable);
+
             // Test database connection
             var connectErrorMessage = await TestConnect(dbEngine,connectionString, authMode);
             if (!String.IsNullOrEmpty(connectErrorMessage))
@@ -57,52 +62,78 @@ namespace AzureDbUp
                 AnsiConsole.WriteLine($"{connectErrorMessage}");
                 return -1;
             }
-            else 
+            else
             {
                 AnsiConsole.MarkupLine($"[green]Test connection successful![/]");
             }
 
-            // Get directory info for sql subfolders
-            var cwd = Directory.GetCurrentDirectory();
-            AnsiConsole.MarkupLine($"Looking for .sql files ...");
-            var sqlFolderList = new List<string>();
-            try
+            // Get folder list and folder settings
+            var listScriptFolder = GetScriptFolders(sqlFolder);
+            if (listScriptFolder.Count == 0)
             {
-                sqlFolderList = Directory.GetDirectories("sql").ToList(); //TODO: Make this foldername configurable? Add as a user command line input?
-            }
-            catch (System.Exception)
-            {
-                AnsiConsole.WriteLine($"The current working directory is {cwd}");
-                throw;
-            }
-            var dirInfoList =  new List<DirectoryInfo>();
-            sqlFolderList.ForEach(folder => {dirInfoList.Add(new DirectoryInfo(folder));});
-            
-            // Get DbUp run options and metadata for each folder 
-            List<ScriptFolder> dbUpFolderList = GetDbUpFolders(dirInfoList);
-            if (dbUpFolderList.Count <= 0)
-            { 
-                AnsiConsole.MarkupLine($"[red]Found no *.sql files in the subfolders of {cwd}\\sql[/]");
-                AnsiConsole.MarkupLine($"[red]Exiting ... [/]");
+                AnsiConsole.MarkupLine($"[red]Could could not find any .sql files in the the subfolders of {new DirectoryInfo(sqlFolder).FullName}[/]");
+                AnsiConsole.MarkupLine($"[red]Exiting ...[/]");
                 return -1;
             }
+            else 
+            {
+                AnsiConsole.MarkupLine($"[green]Found {listScriptFolder.Count} folders with .sql files![/]");
+            }
 
-            var dbUpFolderSettingsTable = GetDbUpFolderSettingsTable(dbUpFolderList);
-            AnsiConsole.Render(dbUpFolderSettingsTable);
-                     
-            // GO TIME! 
-            // Execute sql scripts in each folder according to it's options.
-            foreach (var scriptFolder in dbUpFolderList)
+            // Print folder settings
+            var folderSettingsTable = GetFolderSettings(listScriptFolder);            
+            AnsiConsole.Render(folderSettingsTable);
+            
+            // GO TIME!  Run all the scripts in each folder.
+            int successCount = 0;
+            foreach (var scriptFolder in listScriptFolder)
             {
                 var runScriptsResult = RunScripts(scriptFolder, dbEngine, connectionString, authMode);
+                successCount += runScriptsResult.Scripts.Count();
                 if (!runScriptsResult.Successful)
                 {
-                    AnsiConsole.MarkupLine($"[red]{runScriptsResult.Error.Message}[/]"); 
+                    AnsiConsole.MarkupLine($"[red]{runScriptsResult.Error.Message}[/]");
                     return -1;
                 }
             }
-            AnsiConsole.MarkupLine("[blue]All set![/]");
+
+            AnsiConsole.MarkupLine($"[green]All set! Executed {successCount} scripts successfully![/]");
             return 0;
+        }
+
+        private static List<ScriptFolder> GetScriptFolders(string sqlFolder)
+        {
+            var sqlFolderInfo = new DirectoryInfo(sqlFolder);
+            AnsiConsole.MarkupLine($"Checking folder [blue]{sqlFolderInfo.FullName}[/] for subfolders with .sql files ...");
+            List<ScriptFolder> listScriptFolder = new List<ScriptFolder>();
+            
+            if (!sqlFolderInfo.Exists)
+            {
+                AnsiConsole.MarkupLine($"[Red]Did not find folder {sqlFolderInfo.FullName}[/]");
+                throw new System.IO.DirectoryNotFoundException();
+            }
+
+            var infoList = sqlFolderInfo.GetDirectories();
+
+            foreach (var info in infoList)
+            {
+                var scriptFolder = new ScriptFolder();
+                scriptFolder.FolderPath = info.FullName;
+                scriptFolder.SqlFileCount = info.GetFiles("*.sql").Count(); //TODO: Consider run-always and no-log at file level?
+                if (scriptFolder.SqlFileCount > 0)
+                {
+                    if (info.Name.Contains("run-always"))
+                    {
+                        scriptFolder.RunAlways = true;
+                    }
+                    if (info.Name.Contains("no-log"))
+                    {
+                        scriptFolder.NoLog = true;
+                    }
+                    listScriptFolder.Add(scriptFolder);
+                }
+            }
+            return listScriptFolder;
         }
 
         private static string GetDbEngine(string dbEngine)
@@ -111,13 +142,13 @@ namespace AzureDbUp
             var listHasEngine = dbEngineList.Contains(dbEngine);
             if (!String.IsNullOrEmpty(dbEngine) && !listHasEngine)
             {
-                AnsiConsole.MarkupLine($"AzureDbUp doesn't support engine [Blue]{dbEngine}[/] yet.  Pick one from a list ..."); 
+                AnsiConsole.MarkupLine($"AzureDbUp doesn't support engine [Blue]{dbEngine}[/] yet.  Pick one from a list ...");
             }
             if (listHasEngine == false)
             {
                 var selectionPrompt = new SelectionPrompt<string>().Title("[Blue]Select database engine[/]").AddChoices(dbEngineList);
                 dbEngine = AnsiConsole.Prompt(selectionPrompt);
-                AnsiConsole.MarkupLine($"Using db-engine: [Blue]{dbEngine}[/]");                
+                AnsiConsole.MarkupLine($"Using db-engine: [Blue]{dbEngine}[/]");
             }
             return dbEngine;
         }
@@ -125,20 +156,20 @@ namespace AzureDbUp
         private static string GetConnectionString(string connectionString)
         {
             if (String.IsNullOrEmpty(connectionString))
-            {            
+            {
                 connectionString = AnsiConsole.Ask<string>("Please enter a connection string: ");
-                AnsiConsole.MarkupLine($"Using connection-string: [Blue]{connectionString}[/]"); 
+                AnsiConsole.MarkupLine($"Using connection-string: [Blue]{connectionString}[/]");
             }
             return connectionString;
         }
 
         private static string GetAuthMode(string authMode)
         {
-            var authModeList = typeof(AuthMode).GetFields().Select(x => x.GetValue(null).ToString()).ToList();  
+            var authModeList = typeof(AuthMode).GetFields().Select(x => x.GetValue(null).ToString()).ToList();
             var listHasAuthMode = authModeList.Contains(authMode);
             if (!String.IsNullOrEmpty(authMode) && !listHasAuthMode)
             {
-                AnsiConsole.MarkupLine($"AzureDbUp doesn't support auth mode [Blue]{authMode}[/].  Pick one from a list ..."); 
+                AnsiConsole.MarkupLine($"AzureDbUp doesn't support auth mode [Blue]{authMode}[/].  Pick one from a list ...");
             }
             if (listHasAuthMode == false)
             {
@@ -159,57 +190,17 @@ namespace AzureDbUp
                 var token = await GetToken(credential);
                 var name = GetNameFromToken(token);
                 //var securityGroups = await GetAzureSecurityGroups(credential);  // TODO: Should we list AAD groups?  Future Feature flag?
-            }  
+            }
 
             var upgradeEngineBuilder = GetUpgradeEngineBuilder(dbEngine, connection, authMode);
-            AnsiConsole.WriteLine($"Testing connection to {dbEngine} ...");            
+            AnsiConsole.MarkupLine($"Testing connection to [blue]{dbEngine}[/] ...");  
             var upgrader = upgradeEngineBuilder.WithScript("DbUp test connect","SELECT 1").Build();
             var connectErrorMessage = string.Empty;
             var connectResult = upgrader.TryConnect(out connectErrorMessage);
             return connectErrorMessage;
         }
 
-        private static void ValidagteArguments(string connectionString, string connectionSecurity)
-        {
-            if (String.IsNullOrEmpty(connectionString))
-            {
-                AnsiConsole.MarkupLine("[red]Please set a connection string on the command line.[/]");
-                AnsiConsole.MarkupLine("[red]Please set a connection string on the command line.[/]");
-            }
-        }
-
-        private record ScriptFolder
-        {
-            public string FolderPath { get; set;}
-            public bool LogRun { get; init; }
-            public bool RunAlways { get; init; }
-            public int SqlFileCount { get; set; }
-        }
-        private static List<ScriptFolder> GetDbUpFolders(List<DirectoryInfo> dirInfoList)
-        {
-            // Set the folder run settings 
-            var scriptFolderList = new List<ScriptFolder>();
-            scriptFolderList.Add(new ScriptFolder{FolderPath = "prescripts", LogRun = false, RunAlways = true, SqlFileCount = 0});
-            scriptFolderList.Add(new ScriptFolder{FolderPath = "scripts", LogRun = true, RunAlways = false, SqlFileCount = 0});
-            scriptFolderList.Add(new ScriptFolder{FolderPath = "subscripts", LogRun = false, RunAlways = true, SqlFileCount = 0});
-
-            // Get sql file count for each folder
-            foreach (var dirInfo in dirInfoList)
-            {
-                int sqlFileCount = 0;
-                if (scriptFolderList.Any(x => x.FolderPath.Contains(dirInfo.Name)))
-                {
-                    sqlFileCount = dirInfo.GetFiles("*.sql").Count();
-                    var scriptFolder = scriptFolderList.FirstOrDefault(x => x.FolderPath == dirInfo.Name);
-                    scriptFolder.FolderPath = dirInfo.FullName;
-                    scriptFolder.SqlFileCount = sqlFileCount;
-                }
-            }
-            scriptFolderList.RemoveAll(x => x.SqlFileCount == 0);
-            return scriptFolderList;
-        }
-
-        private static string MaskConnection(string connectionString) 
+        private static string MaskConnection(string connectionString)
         {
             // Regex magic.  Mask the password.
             var maskedConnection = Regex.Replace(connectionString, @"(?<=(?<![^;])pass\w*=).*?(?=;[\w\s]+=|$)", "*****", RegexOptions.IgnoreCase);
@@ -228,23 +219,23 @@ namespace AzureDbUp
             };
 
             var settingsList = settingsDict.Where(x => !String.IsNullOrEmpty(x.Value)).ToList();
-           
+
             var settingTable = new Table();
             settingTable.AddColumn(new TableColumn(new Markup("[OrangeRed1]Setting[/]")));
             settingTable.AddColumn(new TableColumn("[Blue]Value[/]"));
-            
+
             settingsList.ForEach(setting => {settingTable.AddRow(setting.Key, setting.Value);});
             return settingTable;
         }
 
-        private static Table GetDbUpFolderSettingsTable(List<ScriptFolder> dbUpFolderList)
+        private static Table GetFolderSettings(List<ScriptFolder> dbUpFolderList)
         {
             var sqlFoldersTable = new Table();
-            sqlFoldersTable.AddColumn(new TableColumn(new Markup("[OrangeRed1]Sql folder[/]")));
-            sqlFoldersTable.AddColumn(new TableColumn("[Blue]File count [/]"));
-            sqlFoldersTable.AddColumn(new TableColumn("[Blue]Always run[/]"));
-            sqlFoldersTable.AddColumn(new TableColumn("[Blue]Log run[/]"));
-            dbUpFolderList.ForEach(folder => {sqlFoldersTable.AddRow(folder.FolderPath,folder.SqlFileCount.ToString(),folder.RunAlways.ToString(),folder.LogRun.ToString());});
+            sqlFoldersTable.AddColumn(new TableColumn(new Markup("[OrangeRed1]folder[/]")));
+            sqlFoldersTable.AddColumn(new TableColumn("[Blue].sql files[/]"));
+            sqlFoldersTable.AddColumn(new TableColumn("[Blue]run-always[/]"));
+            sqlFoldersTable.AddColumn(new TableColumn("[Blue]no-log[/]"));
+            dbUpFolderList.ForEach(folder => {sqlFoldersTable.AddRow(folder.FolderPath,folder.SqlFileCount.ToString(),folder.RunAlways.ToString(),folder.NoLog.ToString());});
             return sqlFoldersTable;
         }
         private static async Task<string> GetToken(DefaultAzureCredential credential)
@@ -256,8 +247,8 @@ namespace AzureDbUp
                 //string scopes = String.Join(", ", tokenRequestContext.Scopes);
                 AnsiConsole.WriteLine($"Getting an azure sql token ...");
                 var tokenRequestResult = await credential.GetTokenAsync(tokenRequestContext);
-                var token = tokenRequestResult.Token;          
-                return token;       
+                var token = tokenRequestResult.Token;
+                return token;
             }
             catch (Exception ex)
             {
@@ -272,7 +263,7 @@ namespace AzureDbUp
             var jsonToken = handler.ReadToken(token) as JwtSecurityToken;
             var upn = jsonToken.Claims.First(x => x.Type == "upn").Value;
             AnsiConsole.MarkupLine($"Got azure token for identity [blue]{upn}[/]");
-        
+
             // // TODO: Make this an option? Serialize and pretty print full json token to log?  Feature flag?
             // var options = new JsonSerializerOptions { WriteIndented = true};
             // var payload = jsonToken.Payload.SerializeToJson();;
@@ -287,7 +278,7 @@ namespace AzureDbUp
             AnsiConsole.WriteLine($"Getting an azure graph token ...");
             var graphToken = credential.GetToken(new TokenRequestContext(new[] { "https://graph.microsoft.com/.default" }));
             var graphAccessToken = graphToken.Token;
-            
+
             // Get my azure ad security groups
             AnsiConsole.WriteLine($"Getting azure ad groups ...");
             var graphServiceClient = new MsGraph.GraphServiceClient(
@@ -296,13 +287,13 @@ namespace AzureDbUp
                     requestMessage.Headers.Authorization = new AuthenticationHeaderValue("bearer", graphAccessToken);
                     return Task.CompletedTask;
                 }));
-            
+
             var result = await graphServiceClient.Me.MemberOf.Request().GetAsync();
 
             var azureSecurityGroupList = new List<String>();
             foreach (var directoryObject in result)
             {
-                if (directoryObject is MsGraph.Group) 
+                if (directoryObject is MsGraph.Group)
                 {
                     var group = (MsGraph.Group)directoryObject;
                     var displayName = group.DisplayName;
@@ -316,16 +307,15 @@ namespace AzureDbUp
         {
 
             // Set DbUp run options
-            var sqlScriptOptions = new SqlScriptOptions();   
+            var sqlScriptOptions = new SqlScriptOptions();
+            var upgradeEngineBuilder = GetUpgradeEngineBuilder(dbEngine,connectionString,authMode);
             if (scriptFolder.RunAlways)
             {
                 sqlScriptOptions.ScriptType = ScriptType.RunAlways;
             }
-            
-            var upgradeEngineBuilder = GetUpgradeEngineBuilder(dbEngine,connectionString,authMode);
             upgradeEngineBuilder.WithScriptsFromFileSystem(scriptFolder.FolderPath, sqlScriptOptions).LogToConsole().LogScriptOutput();
-            
-            if (!scriptFolder.LogRun)
+
+            if (scriptFolder.NoLog)
             {
                 upgradeEngineBuilder.JournalTo(new NullJournal());
             }
@@ -333,7 +323,7 @@ namespace AzureDbUp
             var upgrader = upgradeEngineBuilder.Build();
 
             // Execute the scripts
-            AnsiConsole.MarkupLine($"[blue]Running scripts in folder {scriptFolder.FolderPath}[/]");
+            AnsiConsole.MarkupLine($"Running scripts in [blue]{scriptFolder.FolderPath}[/]");
             var result = upgrader.PerformUpgrade();
             return result;
         }
@@ -361,7 +351,14 @@ namespace AzureDbUp
             return upgradeEngineBuilder;
         }
 
-        
+        private record ScriptFolder
+        {
+            public string FolderPath { get; set;}
+            public bool NoLog { get; set; }
+            public bool RunAlways { get; set; }
+            public int SqlFileCount { get; set; }
+        }
+
         public class DbEngine
         {
             public const string SqlServer = "sqlserver";
@@ -371,9 +368,8 @@ namespace AzureDbUp
 
         public class AuthMode
         {
-            public const string AzureAuth = "azure";
             public const string SqlAuth = "sql";
+            public const string AzureAuth = "azure";
         }
-
     }
 }
