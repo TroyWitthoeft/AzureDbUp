@@ -1,1 +1,2 @@
-﻿SELECT * FROM schemaversions
+﻿SELECT * FROM SchemaVersions
+
