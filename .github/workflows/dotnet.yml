@@ -57,7 +57,7 @@ jobs:
       run: dotnet build --no-restore
       
     - name: Publish 
-      run: dotnet publish  
+      run: dotnet publish -c Release -p:UseAppHost=false 
       
     - name: Upload build artifact
       uses: actions/upload-artifact@v2.2.4
@@ -82,7 +82,7 @@ jobs:
       run: dotnet build --no-restore
       
     - name: Publish 
-      run: dotnet publish 
+      run: dotnet publish -c Release -p:UseAppHost=false
 
     - name: Create release zip 
       uses: thedoctor0/zip-release@master
