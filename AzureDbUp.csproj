@@ -24,15 +24,7 @@
   </ItemGroup>
   
   <ItemGroup>
-    <Content Include="sql\prescripts\*.sql">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-
-    <Content Include="sql\scripts\*.sql">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-
-    <Content Include="sql\subscripts\*.sql">
+    <Content Include="sql\**">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
 
