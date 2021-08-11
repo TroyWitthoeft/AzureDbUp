@@ -1,9 +1,8 @@
-name: .NET 5 Console Application - AzureDbUp
+name: Build, test, publish, release
 
 on:
   push:
     branches: [ main ]
-  #TODO: Trigger on merge complete?
   pull_request:
     branches: [ main ]
 
@@ -41,6 +40,7 @@ jobs:
       run: dotnet test --no-build --verbosity normal
 
 
+  #TODO:  This job currently triggers on pull requests. Change trigger to merge only? 
   publish:
     runs-on: ubuntu-latest
     steps:
@@ -61,6 +61,7 @@ jobs:
         name: Application
         path: /home/runner/work/AzureDbUp/AzureDbUp/bin/Debug/net5.0/publish/
         
+  #TODO:  This job currently triggers on pull requests. Change trigger to merge only? 
   release: 
     runs-on: ubuntu-latest
     steps:
