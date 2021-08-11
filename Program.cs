@@ -40,7 +40,9 @@ namespace AzureDbUp
         /// <param name="sqlFolder">Optional. Relative or absolute path to folder with sql scripts. Defaults to sql. Example: sql, C:\AzureDbUp\sql </param>
         static async Task<int> Main(string dbEngine, string connectionString, string authMode, string sqlFolder = "sql")
         {
-            //TODO:  Consider more user options for controlling DbUp behavior? Feature flags?  Silence dbup logs? 
+            //TODO:  Consider more user options for controlling DbUp behavior? Feature flags?  Silence dbup logs? What about Structured ILogger?
+            LogBanner();
+
 
             // Print Azure DbUp welcome banner
             var font = FigletFont.Load("fonts/azdbup.flf");
@@ -371,5 +373,26 @@ namespace AzureDbUp
             public const string SqlAuth = "sql";
             public const string AzureAuth = "azure";
         }
+
+        private static void LogBanner()
+        {
+
+
+            AnsiConsole.MarkupLine($@"                  ");
+            AnsiConsole.MarkupLine($@"  .-----------.  ");
+            AnsiConsole.MarkupLine($@" '-.[chartreuse3_1]▒▒▒▒▒▒▒▒▒▒[/].-' ");
+            AnsiConsole.MarkupLine($@" [blue]|▒▒▒▒▒▒[/]/\[blue]░░░░░░| [/]");
+            AnsiConsole.MarkupLine($@" [blue]|▒▒▒▒▒[/]/[orangered1]▓▓[/]\[blue]░░░░░| [/]");
+            AnsiConsole.MarkupLine($@" [blue]|▒▒▒▒[/]/[orangered1]▓[/]/\[orangered1]▓[/]\[blue]░░░░| [/]");
+            AnsiConsole.MarkupLine($@" [blue]|▒▒▒[/]/[orangered1]▓[/]/[blue]▒░[/]\[orangered1]▓[/]\[blue]░░░| [/]");
+            AnsiConsole.MarkupLine($@" [blue]|▒▒[/]/[orangered1]▓[/]/[blue]▒▒░░[/]\[orangered1]▓[/]\[blue]░░| [/]");
+            AnsiConsole.MarkupLine($@"  [blue]`[/]/[orangered1]▓[/]/[blue]▒▒▒░░░[/]\[orangered1]▓[/]\[blue]'[/] [orangered1]ZURE DBUP[/]  ");
+            AnsiConsole.MarkupLine($@"                  ");
+
+
+            AnsiConsole.WriteLine();
+            Console.ResetColor();
+        }
+
     }
 }
