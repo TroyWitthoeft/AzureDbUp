@@ -54,6 +54,9 @@ jobs:
       run: dotnet restore
     - name: Publish 
       run: dotnet publish  
+
+    - name: Build
+      run: dotnet build --no-restore
       
     - name: Upload build artifact
       uses: actions/upload-artifact@v2.2.4
@@ -73,6 +76,9 @@ jobs:
     
     - name: Restore dependencies
       run: dotnet restore
+
+    - name: Build
+      run: dotnet build --no-restore
 
     - name: Create release zip 
       uses: thedoctor0/zip-release@master
