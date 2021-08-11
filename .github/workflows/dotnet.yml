@@ -97,5 +97,5 @@ jobs:
         prerelease: false
         title: "Release Build"
         #files: /home/runner/work/AzureDbUp/AzureDbUp/bin/Debug/net5.0/publish/
-        files: "release-latest.zip"
+        files: "./bin/Release/net5.0/release-latest.zip"
         
