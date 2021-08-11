@@ -28,12 +28,13 @@ namespace AzureDbUp
     class Program
     {
         /// <summary>
-        /// Example terminal command: dotnet AzureDbUp.dll --connection-string "Server=tcp:myserver.database.windows.net,1433;Initial Catalog=mydatabase" --connection-security azure --pre-scripts-path PreScripts/ --scripts-path Scripts/ --sub-scripts-path SubScripts/  
+        /// Example terminal command: dotnet AzureDbUp.dll --connection-string "Server=tcp:myserver.database.windows.net,1433;Initial Catalog=mydatabase"   
         /// </summary>
         /// <param name="dbEngine">Database engine. Options: SqlServer, MySql, PostgreSql</param>
         /// <param name="connectionString">Database connection string. Example: Server=tcp:myserver.database.windows.net,1433;Initial Catalog=mydatabase</param>
         /// <param name="authMode">Database connection authentication mode. Options: azure, sql</param>
-        static async Task<int> Main(string dbEngine, string connectionString, string authMode)
+        /// <param name="sqlFolder">Name of the folder with sql scripts. Example: sql</param>
+        static async Task<int> Main(string dbEngine, string connectionString, string authMode, string sqlFolder = "sql")
         {
             //TODO:  Consider more user options? Feature flags?  Override logs, turn on or off?  
             
@@ -45,7 +46,6 @@ namespace AzureDbUp
             connectionString = GetConnectionString(connectionString);
             authMode = GetAuthMode(authMode);
 
-            
             // Print conn settings table
             var connSettingsTable = GetConnSettingsTable(dbEngine,connectionString,authMode);
             AnsiConsole.Render(connSettingsTable);                      
@@ -64,7 +64,8 @@ namespace AzureDbUp
 
             // Get directory info for sql subfolders
             var cwd = Directory.GetCurrentDirectory();
-            AnsiConsole.MarkupLine($"Looking for .sql files ...");
+            //var sqlDir = Directory.GetDirectories(sqlFolder).FirstOrDefault();
+            //AnsiConsole.MarkupLine($"Looking for .sql files in {cwd}{sqlDir}");
             var sqlFolderList = new List<string>();
             try
             {
@@ -177,35 +178,33 @@ namespace AzureDbUp
                 AnsiConsole.MarkupLine("[red]Please set a connection string on the command line.[/]");
             }
         }
-
-        private record ScriptFolder
-        {
-            public string FolderPath { get; set;}
-            public bool LogRun { get; init; }
-            public bool RunAlways { get; init; }
-            public int SqlFileCount { get; set; }
-        }
         private static List<ScriptFolder> GetDbUpFolders(List<DirectoryInfo> dirInfoList)
         {
             // Set the folder run settings 
             var scriptFolderList = new List<ScriptFolder>();
-            scriptFolderList.Add(new ScriptFolder{FolderPath = "prescripts", LogRun = false, RunAlways = true, SqlFileCount = 0});
-            scriptFolderList.Add(new ScriptFolder{FolderPath = "scripts", LogRun = true, RunAlways = false, SqlFileCount = 0});
-            scriptFolderList.Add(new ScriptFolder{FolderPath = "subscripts", LogRun = false, RunAlways = true, SqlFileCount = 0});
+            // scriptFolderList.Add(new ScriptFolder{FolderPath = "prescripts", LogRun = false, RunAlways = true, SqlFileCount = 0});
+            // scriptFolderList.Add(new ScriptFolder{FolderPath = "scripts", LogRun = true, RunAlways = false, SqlFileCount = 0});
+            // scriptFolderList.Add(new ScriptFolder{FolderPath = "subscripts", LogRun = false, RunAlways = true, SqlFileCount = 0});
 
             // Get sql file count for each folder
             foreach (var dirInfo in dirInfoList)
             {
-                int sqlFileCount = 0;
-                if (scriptFolderList.Any(x => x.FolderPath.Contains(dirInfo.Name)))
+                var scriptFolder = new ScriptFolder();
+                scriptFolder.FolderPath = dirInfo.FullName;
+                scriptFolder.SqlFileCount = dirInfo.GetFiles("*.sql").Count();
+                if (dirInfo.Name.Contains("always")) 
                 {
-                    sqlFileCount = dirInfo.GetFiles("*.sql").Count();
-                    var scriptFolder = scriptFolderList.FirstOrDefault(x => x.FolderPath == dirInfo.Name);
-                    scriptFolder.FolderPath = dirInfo.FullName;
-                    scriptFolder.SqlFileCount = sqlFileCount;
+                    scriptFolder.RunAlways = true;
+                }
+                if (dirInfo.Name.Contains("nolog"))
+                {
+                    scriptFolder.LogRun = false;
+                }
+                if (scriptFolder.SqlFileCount > 0)
+                {
+                    scriptFolderList.Add(scriptFolder);
                 }
             }
-            scriptFolderList.RemoveAll(x => x.SqlFileCount == 0);
             return scriptFolderList;
         }
 
@@ -317,12 +316,11 @@ namespace AzureDbUp
 
             // Set DbUp run options
             var sqlScriptOptions = new SqlScriptOptions();   
+            var upgradeEngineBuilder = GetUpgradeEngineBuilder(dbEngine,connectionString,authMode);
             if (scriptFolder.RunAlways)
             {
                 sqlScriptOptions.ScriptType = ScriptType.RunAlways;
             }
-            
-            var upgradeEngineBuilder = GetUpgradeEngineBuilder(dbEngine,connectionString,authMode);
             upgradeEngineBuilder.WithScriptsFromFileSystem(scriptFolder.FolderPath, sqlScriptOptions).LogToConsole().LogScriptOutput();
             
             if (!scriptFolder.LogRun)
@@ -361,6 +359,13 @@ namespace AzureDbUp
             return upgradeEngineBuilder;
         }
 
+        private record ScriptFolder
+        {
+            public string FolderPath { get; set;}
+            public bool LogRun { get; set; }
+            public bool RunAlways { get; set; }
+            public int SqlFileCount { get; set; }
+        }
         
         public class DbEngine
         {
@@ -374,6 +379,5 @@ namespace AzureDbUp
             public const string AzureAuth = "azure";
             public const string SqlAuth = "sql";
         }
-
     }
 }
