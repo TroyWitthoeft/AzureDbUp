@@ -390,6 +390,29 @@ namespace AzureDbUp
             AnsiConsole.MarkupLine($@"                  ");
 
 
+           AnsiConsole.MarkupLine($@"                              ");   
+           AnsiConsole.MarkupLine($@"      ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒      ");   
+           AnsiConsole.MarkupLine($@"   ▒▒▒░░░░░░░░░░░░░░░░░░▒▒▒   ");   
+           AnsiConsole.MarkupLine($@"  ▒░░░░░░░░░▒▒▒▒▒▒░░░░░░░░░▒  ");   
+           AnsiConsole.MarkupLine($@" |▒▓▓▓░░▒▒▒▒▒▒▒▒▒▒▒▒▒▒░░▓▓▓░| ");   
+           AnsiConsole.MarkupLine($@" |▒▒▒▒▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░░░░| ");   
+           AnsiConsole.MarkupLine($@" |▒▒▒▒▒▒▒▒▒▒▒/▓▓\░░░░░░░░░░░| ");   
+           AnsiConsole.MarkupLine($@" |▒▒▒▒▒▒▒▒▒▒/▓▓▓▓\░░░░░░░░░░| ");   
+           AnsiConsole.MarkupLine($@" |▒▒▒▒▒▒▒▒▒/▓▓▓▓▓▓\░░░░░░░░░| ");   
+           AnsiConsole.MarkupLine($@" |▒▒▒▒▒▒▒▒/▓▓▓▓▓▓▓▓\░░░░░░░░| ");   
+           AnsiConsole.MarkupLine($@" |▒▒▒▒▒▒▒/▓▓▓▓/\▓▓▓▓\░░░░░░░| ");   
+           AnsiConsole.MarkupLine($@" |▒▒▒▒▒▒/▓▓▓▓/▒░\▓▓▓▓\░░░░░░| ");   
+           AnsiConsole.MarkupLine($@" |▒▒▒▒▒/▓▓▓▓/▒▒░░\▓▓▓▓\░░░░░| ");   
+           AnsiConsole.MarkupLine($@" |▒▒▒▒/▓▓▓▓/▒▒▒░░░\▓▓▓▓\░░░░| ");   
+           AnsiConsole.MarkupLine($@" |▒▒▒/▓▓▓▓/▒▒▒▒░░░░\▓▓▓▓\░░░| ");   
+           AnsiConsole.MarkupLine($@" |▒▒/▓▓▓▓/▒▒▒▒▒░░░░░\▓▓▓▓\░░| ");   
+           AnsiConsole.MarkupLine($@" |▒/▓▓▓▓/▒▒▒▒▒▒░░░░░░\▓▓▓▓\░| ");   
+           AnsiConsole.MarkupLine($@"     ▒▒▒▒▒▒▒▒▒▒░░░░░░░░░░     ");   
+           AnsiConsole.MarkupLine($@"                              ");   
+
+
+
+
             AnsiConsole.WriteLine();
             Console.ResetColor();
         }
