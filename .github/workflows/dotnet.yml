@@ -1,0 +1,101 @@
+name: Build, test, publish, release
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v1
+      with:
+        dotnet-version: 5.0.x
+    
+    - name: Restore dependencies
+      run: dotnet restore
+    
+    
+    - name: Build
+      run: dotnet build --no-restore
+   
+  test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v1
+      with:
+        dotnet-version: 5.0.x
+    
+    - name: Restore dependencies
+      run: dotnet restore
+      
+    - name: Test
+      run: dotnet test --no-build --verbosity normal
+
+
+  #TODO:  This job currently triggers on pull requests. Change trigger to merge only? 
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v1
+      with:
+        dotnet-version: 5.0.x
+    
+    - name: Restore dependencies
+      run: dotnet restore
+
+    - name: Build
+      run: dotnet build --no-restore
+      
+    - name: Publish 
+      run: dotnet publish -c Release -p:UseAppHost=false 
+      
+    - name: Upload build artifact
+      uses: actions/upload-artifact@v2.2.4
+      with:
+        name: Application
+        path: /home/runner/work/AzureDbUp/AzureDbUp/bin/Debug/net5.0/publish/
+        
+  #TODO:  This job currently triggers on pull requests. Change trigger to merge only? 
+  release: 
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v1
+      with:
+        dotnet-version: 5.0.x
+    
+    - name: Restore dependencies
+      run: dotnet restore
+      
+    - name: Publish 
+      run: dotnet publish -c Release -p:UseAppHost=false
+
+    - name: Create release zip 
+      uses: thedoctor0/zip-release@master
+      with:
+        directory: './bin/Release/net5.0'
+        type: 'zip'
+        filename: 'release-latest.zip'
+        exclusions: '*.vscode* *.git* /*node_modules/* .editorconfig'
+
+    - name: Release
+      uses: marvinpinto/action-automatic-releases@latest
+      with:
+        repo_token: ${{ secrets.GITHUB_TOKEN }}
+        automatic_release_tag: "release-latest"
+        prerelease: false
+        title: "Release Build"
+        #files: /home/runner/work/AzureDbUp/AzureDbUp/bin/Debug/net5.0/publish/
+        files: "./bin/Release/net5.0/release-latest.zip"
+        

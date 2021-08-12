@@ -1,0 +1,36 @@
+{
+   // Use IntelliSense to find out which attributes exist for C# debugging
+   // Use hover for the description of the existing attributes
+   // For further information visit https://github.com/OmniSharp/omnisharp-vscode/blob/master/debugger-launchjson.md
+   "version": "0.2.0",
+   "configurations": [
+        {
+            "name": ".NET Core Launch (console)",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "build",
+            "program": "${workspaceFolder}/bin/Debug/net5.0/AzureDbUp.dll",
+            // TODO: Consider platform specific args? https://code.visualstudio.com/docs/editor/debugging#_platformspecific-properties
+            "args": [   
+                //"--db-engine","mysql", //options: mysql,sqlserver,postgresql
+                //"--conn-string","Server=tcp:my-example-server.database.windows.net,1433;Database=my-example-database",
+                //"--auth-mode","sql",  //options: azure,sql,
+                //"--sql-folder","sql" 
+            ],
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "stopAtEntry": false,
+            "justMyCode":false,
+            "suppressJITOptimizations": true,
+            "logging": {
+                "moduleLoad": false
+            }
+        },
+        {
+            "name": ".NET Core Attach",
+            "type": "coreclr",
+            "request": "attach",
+            "processId": "${command:pickProcess}",
+        }
+    ]
+}
