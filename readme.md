@@ -2,7 +2,7 @@
 
 ![Azure DbUp Logo](./img/AzureDbUp-logo.png)
 
-Update your database from anywhere! AzureDbUp is a dotnet console application that updates your target sql database from the command line using DbUp.  DbUp tracks which SQL scripts have been run already, and runs the change scripts that are needed to get your database up to date.  This console application pairs nicely with devops tools like Azure Devops and Github Actions so you can automate your deployments.   
+Update your database from anywhere! AzureDbUp is a dotnet console application that updates your target sql database from the command line using DbUp.  DbUp tracks which SQL scripts have been run already, and runs the change scripts that are needed to get your database up to date.  This console application pairs nicely with devops tools like Azure Devops and Github Actions so you can automate your database upgrades. 
 
 ## Getting Started
  - Prereq: Download and install [dotnet core](https://dotnet.microsoft.com/download).
