@@ -41,12 +41,9 @@ namespace AzureDbUp
         static async Task<int> Main(string dbEngine, string connectionString, string authMode, string sqlFolder = "sql")
         {
             //TODO:  Consider more user options for controlling DbUp behavior? Feature flags?  Silence dbup logs? What about Structured ILogger?
+            
+            // Print AzureDbUp welcome banner
             LogBanner();
-
-
-            // Print Azure DbUp welcome banner
-            var font = FigletFont.Load("fonts/azdbup.flf");
-            AnsiConsole.Render(new FigletText(font,"AZURE  DBUP").Color(Color.OrangeRed1));  //TODO:  Instead of figlet, just a simple blue/orange dbup logo ASCII art? 
 
             // Get database connection settings
             dbEngine = GetDbEngine(dbEngine);
@@ -66,7 +63,7 @@ namespace AzureDbUp
             }
             else
             {
-                AnsiConsole.MarkupLine($"[green]Test connection successful![/]");
+                AnsiConsole.MarkupLine($"[lime]Test connection successful![/]");
             }
 
             // Get folder list and folder settings
@@ -79,7 +76,7 @@ namespace AzureDbUp
             }
             else 
             {
-                AnsiConsole.MarkupLine($"[green]Found {listScriptFolder.Count} folders with .sql files![/]");
+                AnsiConsole.MarkupLine($"[lime]Found {listScriptFolder.Count} folders with .sql files![/]");
             }
 
             // Print folder settings
@@ -99,7 +96,7 @@ namespace AzureDbUp
                 }
             }
 
-            AnsiConsole.MarkupLine($"[green]All set! Executed {successCount} scripts successfully![/]");
+            AnsiConsole.MarkupLine($"[lime]All set! Executed {successCount} scripts successfully![/]");
             return 0;
         }
 
@@ -376,45 +373,24 @@ namespace AzureDbUp
 
         private static void LogBanner()
         {
-
-
-            AnsiConsole.MarkupLine($@"                  ");
-            AnsiConsole.MarkupLine($@"  .-----------.  ");
-            AnsiConsole.MarkupLine($@" '-.[chartreuse3_1]▒▒▒▒▒▒▒▒▒▒[/].-' ");
-            AnsiConsole.MarkupLine($@" [blue]|▒▒▒▒▒▒[/]/\[blue]░░░░░░| [/]");
-            AnsiConsole.MarkupLine($@" [blue]|▒▒▒▒▒[/]/[orangered1]▓▓[/]\[blue]░░░░░| [/]");
-            AnsiConsole.MarkupLine($@" [blue]|▒▒▒▒[/]/[orangered1]▓[/]/\[orangered1]▓[/]\[blue]░░░░| [/]");
-            AnsiConsole.MarkupLine($@" [blue]|▒▒▒[/]/[orangered1]▓[/]/[blue]▒░[/]\[orangered1]▓[/]\[blue]░░░| [/]");
-            AnsiConsole.MarkupLine($@" [blue]|▒▒[/]/[orangered1]▓[/]/[blue]▒▒░░[/]\[orangered1]▓[/]\[blue]░░| [/]");
-            AnsiConsole.MarkupLine($@"  [blue]`[/]/[orangered1]▓[/]/[blue]▒▒▒░░░[/]\[orangered1]▓[/]\[blue]'[/] [orangered1]ZURE DBUP[/]  ");
-            AnsiConsole.MarkupLine($@"                  ");
-
-
            AnsiConsole.MarkupLine($@"                              ");   
-           AnsiConsole.MarkupLine($@"      ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒      ");   
-           AnsiConsole.MarkupLine($@"   ▒▒▒░░░░░░░░░░░░░░░░░░▒▒▒   ");   
-           AnsiConsole.MarkupLine($@"  ▒░░░░░░░░░▒▒▒▒▒▒░░░░░░░░░▒  ");   
-           AnsiConsole.MarkupLine($@" |▒▓▓▓░░▒▒▒▒▒▒▒▒▒▒▒▒▒▒░░▓▓▓░| ");   
-           AnsiConsole.MarkupLine($@" |▒▒▒▒▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░░░░| ");   
-           AnsiConsole.MarkupLine($@" |▒▒▒▒▒▒▒▒▒▒▒/▓▓\░░░░░░░░░░░| ");   
-           AnsiConsole.MarkupLine($@" |▒▒▒▒▒▒▒▒▒▒/▓▓▓▓\░░░░░░░░░░| ");   
-           AnsiConsole.MarkupLine($@" |▒▒▒▒▒▒▒▒▒/▓▓▓▓▓▓\░░░░░░░░░| ");   
-           AnsiConsole.MarkupLine($@" |▒▒▒▒▒▒▒▒/▓▓▓▓▓▓▓▓\░░░░░░░░| ");   
-           AnsiConsole.MarkupLine($@" |▒▒▒▒▒▒▒/▓▓▓▓/\▓▓▓▓\░░░░░░░| ");   
-           AnsiConsole.MarkupLine($@" |▒▒▒▒▒▒/▓▓▓▓/▒░\▓▓▓▓\░░░░░░| ");   
-           AnsiConsole.MarkupLine($@" |▒▒▒▒▒/▓▓▓▓/▒▒░░\▓▓▓▓\░░░░░| ");   
-           AnsiConsole.MarkupLine($@" |▒▒▒▒/▓▓▓▓/▒▒▒░░░\▓▓▓▓\░░░░| ");   
-           AnsiConsole.MarkupLine($@" |▒▒▒/▓▓▓▓/▒▒▒▒░░░░\▓▓▓▓\░░░| ");   
-           AnsiConsole.MarkupLine($@" |▒▒/▓▓▓▓/▒▒▒▒▒░░░░░\▓▓▓▓\░░| ");   
-           AnsiConsole.MarkupLine($@" |▒/▓▓▓▓/▒▒▒▒▒▒░░░░░░\▓▓▓▓\░| ");   
-           AnsiConsole.MarkupLine($@"     ▒▒▒▒▒▒▒▒▒▒░░░░░░░░░░     ");   
+           AnsiConsole.MarkupLine($@" [white]     ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒[/]      ");   
+           AnsiConsole.MarkupLine($@" [white]  ▒▒▒[/][chartreuse2_1]▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓[/][white]▒▒▒[/]   ");   
+           AnsiConsole.MarkupLine($@" [blue]|[/][white]▒▓▓▓[/][chartreuse2_1]▓▓[/][lime]▒▒▒▒▒▒▒▒▒▒▒▒▒▒[/][chartreuse2_1]▓▓[/][white]▓▓▓░[/][blue]|[/] ");   
+           AnsiConsole.MarkupLine($@" [blue]|▒▒▒▒[/][white]▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓[/][blue]░░░░|[/] ");   
+           AnsiConsole.MarkupLine($@" [blue]|▒▒▒▒▒▒▒▒▒▒▒[/][orangered1]/▓▓\[/][blue]░░░░░░░░░░░|[/] ");   
+           AnsiConsole.MarkupLine($@" [blue]|▒▒▒▒▒▒▒▒▒▒[/][orangered1]/▓▓▓▓\[/][blue]░░░░░░░░░░|[/] ");   
+           AnsiConsole.MarkupLine($@" [blue]|▒▒▒▒▒▒▒▒▒[/][orangered1]/▓▓▓▓▓▓\[/][blue]░░░░░░░░░|[/] ");   
+           AnsiConsole.MarkupLine($@" [blue]|▒▒▒▒▒▒▒▒[/][orangered1]/▓▓▓▓▓▓▓▓\[/][blue]░░░░░░░░|[/] ");   
+           AnsiConsole.MarkupLine($@" [blue]|▒▒▒▒▒▒▒[/][orangered1]/▓▓▓▓/\▓▓▓▓\[/][blue]░░░░░░░|[/] ");   
+           AnsiConsole.MarkupLine($@" [blue]|▒▒▒▒▒▒[/][orangered1]/▓▓▓▓/[/][blue]▒░\[/][orangered1]▓▓▓▓\[/][blue]░░░░░░|[/] ");   
+           AnsiConsole.MarkupLine($@" [blue]|▒▒▒▒▒[/][orangered1]/▓▓▓▓/[/][blue]▒▒░░[/][orangered1]\▓▓▓▓\[/][blue]░░░░░|[/] ");   
+           AnsiConsole.MarkupLine($@" [blue]|▒▒▒▒[/][orangered1]/▓▓▓▓/[/][blue]▒▒▒░░░[/][orangered1]\▓▓▓▓\[/][blue]░░░░|[/] ");   
+           AnsiConsole.MarkupLine($@" [blue]|▒▒▒[/][orangered1]/▓▓▓▓/[/][blue]▒▒▒▒░░░░[/][orangered1]\▓▓▓▓\[/][blue]░░░|[/] ");   
+           AnsiConsole.MarkupLine($@" [blue]|▒▒[/][orangered1]/▓▓▓▓/[/][blue]▒▒▒▒▒░░░░░\[/][orangered1]▓▓▓▓\[/][blue]░░|[/] ");   
+           AnsiConsole.MarkupLine($@" [blue]|▒[/][orangered1]/▓▓▓▓/[/][blue]▒▒▒▒▒▒░░░░░░[/][orangered1]\▓▓▓▓\[/][blue]░|[/] ");   
+           AnsiConsole.MarkupLine($@" [blue]   ▒▒▒▒▒▒▒▒▒▒▒░░░░░░░░░░░[/]     ");   
            AnsiConsole.MarkupLine($@"                              ");   
-
-
-
-
-            AnsiConsole.WriteLine();
-            Console.ResetColor();
         }
 
     }
