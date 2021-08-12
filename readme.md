@@ -13,7 +13,7 @@ Update your database from anywhere! AzureDbUp is a dotnet console application th
 
  ![Azure DbUp demo](./img/AzureDbUp-demo.gif)
  
-For a fully automated (non-interactive) run, pipe in the question answers on the commandline. Example: 
+For a fully automated (non-interactive) run for use in a DevOps pipeline or Github action, just use commandline arguments to set the values. Example: 
 
 `dotnet AzureDbUp.dll --conn-string "Server=tcp:my-example-server.database.windows.net,1433;Initial Catalog=my-example-database" --db-engine "sqlserver" --auth-mode "azure"`
 ## Contributing
