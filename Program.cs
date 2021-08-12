@@ -7,7 +7,6 @@ using DbUp.Helpers;
 using DbUp.Support;
 using MsGraph = Microsoft.Graph;
 using Newtonsoft.Json.Linq;
-//using Npgsql;
 using Spectre.Console;
 using System;
 using System.Collections.Generic;
@@ -35,10 +34,10 @@ namespace AzureDbUp
         /// Example terminal command with parameters: dotnet AzureDbUp.dll 
         /// </summary>
         /// <param name="dbEngine">Required. Database engine. Options: sqlserver, mysql, postgresql</param>
-        /// <param name="connectionString">Required. Database connection string. Example: Server=tcp:myserver.database.windows.net,1433;Initial Catalog=mydatabase</param>
+        /// <param name="connString">Required. Database connection string. Example: Server=tcp:myserver.database.windows.net,1433;Initial Catalog=mydatabase</param>
         /// <param name="authMode">Required. Database connection authentication mode. Options: azure, sql</param>
         /// <param name="sqlFolder">Optional. Relative or absolute path to folder with sql scripts. Defaults to sql. Example: sql, C:\AzureDbUp\sql </param>
-        static async Task<int> Main(string dbEngine, string connectionString, string authMode, string sqlFolder = "sql")
+        static async Task<int> Main(string dbEngine, string connString, string authMode, string sqlFolder = "sql")
         {
             //TODO:  Consider more user options for controlling DbUp behavior? Feature flags?  Silence dbup logs? What about Structured ILogger?
             
@@ -46,16 +45,16 @@ namespace AzureDbUp
             LogBanner();
 
             // Get database connection settings
-            dbEngine = GetDbEngine(dbEngine);
-            connectionString = GetConnectionString(connectionString);
+            connString = GetConnectionString(connString);
+            dbEngine = GetDbEngine(dbEngine);            
             authMode = GetAuthMode(authMode);
 
             // Print conn settings table
-            var connSettingsTable = GetConnSettingsTable(dbEngine,connectionString,authMode);
+            var connSettingsTable = GetConnSettingsTable(dbEngine,connString,authMode);
             AnsiConsole.Render(connSettingsTable);
 
             // Test database connection
-            var connectErrorMessage = await TestConnect(dbEngine,connectionString, authMode);
+            var connectErrorMessage = await TestConnect(dbEngine,connString, authMode);
             if (!String.IsNullOrEmpty(connectErrorMessage))
             {
                 AnsiConsole.WriteLine($"{connectErrorMessage}");
@@ -64,6 +63,7 @@ namespace AzureDbUp
             else
             {
                 AnsiConsole.MarkupLine($"[lime]Test connection successful![/]");
+                AnsiConsole.MarkupLine($"");
             }
 
             // Get folder list and folder settings
@@ -77,17 +77,19 @@ namespace AzureDbUp
             else 
             {
                 AnsiConsole.MarkupLine($"[lime]Found {listScriptFolder.Count} folders with .sql files![/]");
+                AnsiConsole.MarkupLine($"");
             }
 
             // Print folder settings
             var folderSettingsTable = GetFolderSettings(listScriptFolder);            
             AnsiConsole.Render(folderSettingsTable);
             
-            // GO TIME!  Run all the scripts in each folder.
+            AnsiConsole.MarkupLine($"[green]Let's run scripts![/]");
+            AnsiConsole.MarkupLine($"");
             int successCount = 0;
             foreach (var scriptFolder in listScriptFolder)
             {
-                var runScriptsResult = RunScripts(scriptFolder, dbEngine, connectionString, authMode);
+                var runScriptsResult = RunScripts(scriptFolder, dbEngine, connString, authMode);
                 successCount += runScriptsResult.Scripts.Count();
                 if (!runScriptsResult.Successful)
                 {
@@ -145,9 +147,9 @@ namespace AzureDbUp
             }
             if (listHasEngine == false)
             {
-                var selectionPrompt = new SelectionPrompt<string>().Title("[Blue]Select database engine[/]").AddChoices(dbEngineList);
+                var selectionPrompt = new SelectionPrompt<string>().Title("[orangered1]Select db-engine[/]:").AddChoices(dbEngineList);
                 dbEngine = AnsiConsole.Prompt(selectionPrompt);
-                AnsiConsole.MarkupLine($"Using db-engine: [Blue]{dbEngine}[/]");
+                AnsiConsole.MarkupLine($"[orangered1]Select db-engine[/]: [Blue]{dbEngine}[/]");
             }
             return dbEngine;
         }
@@ -156,8 +158,8 @@ namespace AzureDbUp
         {
             if (String.IsNullOrEmpty(connectionString))
             {
-                connectionString = AnsiConsole.Ask<string>("Please enter a connection string: ");
-                AnsiConsole.MarkupLine($"Using connection-string: [Blue]{connectionString}[/]");
+                connectionString = AnsiConsole.Ask<string>("[orangered1]Type conn-string[/]");
+                AnsiConsole.MarkupLine($"                  [Blue]{connectionString}[/]");
             }
             return connectionString;
         }
@@ -172,9 +174,9 @@ namespace AzureDbUp
             }
             if (listHasAuthMode == false)
             {
-                var selectionPrompt = new SelectionPrompt<string>().Title("[blue]Select authentication mode[/]").AddChoices(authModeList);
+                var selectionPrompt = new SelectionPrompt<string>().Title("[orangered1]Select auth-mode[/]:").AddChoices(authModeList);
                 authMode = AnsiConsole.Prompt(selectionPrompt);
-                AnsiConsole.MarkupLine($"Using auth-mode: [blue]{authMode}[/]");
+                AnsiConsole.MarkupLine($"[orangered1]Select auth-mode[/]: [blue]{authMode}[/]");
             }
             return authMode;
         }
@@ -192,7 +194,7 @@ namespace AzureDbUp
             }
 
             var upgradeEngineBuilder = GetUpgradeEngineBuilder(dbEngine, connection, authMode);
-            AnsiConsole.MarkupLine($"Testing connection to [blue]{dbEngine}[/] ...");  
+            AnsiConsole.MarkupLine($"Testing connection to [blue]{MaskConnection(connection)}[/] ...");  
             var upgrader = upgradeEngineBuilder.WithScript("DbUp test connect","SELECT 1").Build();
             var connectErrorMessage = string.Empty;
             var connectResult = upgrader.TryConnect(out connectErrorMessage);
@@ -212,18 +214,18 @@ namespace AzureDbUp
             var displayConnectionString = maskedConnection;
 
             var settingsDict = new Dictionary<string, string>() {
+                { "conn-string", displayConnectionString},
                 { "db-engine", dbEngine},
-                { "connection-string", displayConnectionString},
                 { "auth-mode", authMode}
             };
 
             var settingsList = settingsDict.Where(x => !String.IsNullOrEmpty(x.Value)).ToList();
 
             var settingTable = new Table();
-            settingTable.AddColumn(new TableColumn(new Markup("[OrangeRed1]Setting[/]")));
-            settingTable.AddColumn(new TableColumn("[Blue]Value[/]"));
+            settingTable.AddColumn(new TableColumn(new Markup("[OrangeRed1]setting      [/]")));
+            settingTable.AddColumn(new TableColumn("[OrangeRed1]value[/]"));
 
-            settingsList.ForEach(setting => {settingTable.AddRow(setting.Key, setting.Value);});
+            settingsList.ForEach(setting => {settingTable.AddRow(new Markup(setting.Key), new Markup($"[blue]{setting.Value}[/]"));});
             return settingTable;
         }
 
@@ -231,9 +233,9 @@ namespace AzureDbUp
         {
             var sqlFoldersTable = new Table();
             sqlFoldersTable.AddColumn(new TableColumn(new Markup("[OrangeRed1]folder[/]")));
-            sqlFoldersTable.AddColumn(new TableColumn("[Blue].sql files[/]"));
-            sqlFoldersTable.AddColumn(new TableColumn("[Blue]run-always[/]"));
-            sqlFoldersTable.AddColumn(new TableColumn("[Blue]no-log[/]"));
+            sqlFoldersTable.AddColumn(new TableColumn("[OrangeRed1].sql files[/]"));
+            sqlFoldersTable.AddColumn(new TableColumn("[OrangeRed1]run-always[/]"));
+            sqlFoldersTable.AddColumn(new TableColumn("[OrangeRed1]no-log[/]"));
             dbUpFolderList.ForEach(folder => {sqlFoldersTable.AddRow(folder.FolderPath,folder.SqlFileCount.ToString(),folder.RunAlways.ToString(),folder.NoLog.ToString());});
             return sqlFoldersTable;
         }
@@ -261,7 +263,7 @@ namespace AzureDbUp
             var handler = new JwtSecurityTokenHandler();
             var jsonToken = handler.ReadToken(token) as JwtSecurityToken;
             var upn = jsonToken.Claims.First(x => x.Type == "upn").Value;
-            AnsiConsole.MarkupLine($"Got azure token for identity [blue]{upn}[/]");
+            AnsiConsole.MarkupLine($"Got azure token for [blue]{upn}[/]");
 
             // // TODO: Make this an option? Serialize and pretty print full json token to log?  Feature flag?
             // var options = new JsonSerializerOptions { WriteIndented = true};
@@ -360,8 +362,8 @@ namespace AzureDbUp
 
         public class DbEngine
         {
-            public const string SqlServer = "sqlserver";
             public const string MySql = "mysql";
+            public const string SqlServer = "sqlserver";
             public const string PostgresSql = "postgresql";
         }
 
@@ -373,24 +375,26 @@ namespace AzureDbUp
 
         private static void LogBanner()
         {
-           AnsiConsole.MarkupLine($@"                              ");   
-           AnsiConsole.MarkupLine($@" [white]     ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒[/]      ");   
-           AnsiConsole.MarkupLine($@" [white]  ▒▒▒[/][chartreuse2_1]▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓[/][white]▒▒▒[/]   ");   
-           AnsiConsole.MarkupLine($@" [blue]|[/][white]▒▓▓▓[/][chartreuse2_1]▓▓[/][lime]▒▒▒▒▒▒▒▒▒▒▒▒▒▒[/][chartreuse2_1]▓▓[/][white]▓▓▓░[/][blue]|[/] ");   
-           AnsiConsole.MarkupLine($@" [blue]|▒▒▒▒[/][white]▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓[/][blue]░░░░|[/] ");   
-           AnsiConsole.MarkupLine($@" [blue]|▒▒▒▒▒▒▒▒▒▒▒[/][orangered1]/▓▓\[/][blue]░░░░░░░░░░░|[/] ");   
-           AnsiConsole.MarkupLine($@" [blue]|▒▒▒▒▒▒▒▒▒▒[/][orangered1]/▓▓▓▓\[/][blue]░░░░░░░░░░|[/] ");   
-           AnsiConsole.MarkupLine($@" [blue]|▒▒▒▒▒▒▒▒▒[/][orangered1]/▓▓▓▓▓▓\[/][blue]░░░░░░░░░|[/] ");   
-           AnsiConsole.MarkupLine($@" [blue]|▒▒▒▒▒▒▒▒[/][orangered1]/▓▓▓▓▓▓▓▓\[/][blue]░░░░░░░░|[/] ");   
-           AnsiConsole.MarkupLine($@" [blue]|▒▒▒▒▒▒▒[/][orangered1]/▓▓▓▓/\▓▓▓▓\[/][blue]░░░░░░░|[/] ");   
-           AnsiConsole.MarkupLine($@" [blue]|▒▒▒▒▒▒[/][orangered1]/▓▓▓▓/[/][blue]▒░\[/][orangered1]▓▓▓▓\[/][blue]░░░░░░|[/] ");   
-           AnsiConsole.MarkupLine($@" [blue]|▒▒▒▒▒[/][orangered1]/▓▓▓▓/[/][blue]▒▒░░[/][orangered1]\▓▓▓▓\[/][blue]░░░░░|[/] ");   
-           AnsiConsole.MarkupLine($@" [blue]|▒▒▒▒[/][orangered1]/▓▓▓▓/[/][blue]▒▒▒░░░[/][orangered1]\▓▓▓▓\[/][blue]░░░░|[/] ");   
-           AnsiConsole.MarkupLine($@" [blue]|▒▒▒[/][orangered1]/▓▓▓▓/[/][blue]▒▒▒▒░░░░[/][orangered1]\▓▓▓▓\[/][blue]░░░|[/] ");   
-           AnsiConsole.MarkupLine($@" [blue]|▒▒[/][orangered1]/▓▓▓▓/[/][blue]▒▒▒▒▒░░░░░\[/][orangered1]▓▓▓▓\[/][blue]░░|[/] ");   
-           AnsiConsole.MarkupLine($@" [blue]|▒[/][orangered1]/▓▓▓▓/[/][blue]▒▒▒▒▒▒░░░░░░[/][orangered1]\▓▓▓▓\[/][blue]░|[/] ");   
-           AnsiConsole.MarkupLine($@" [blue]   ▒▒▒▒▒▒▒▒▒▒▒░░░░░░░░░░░[/]     ");   
-           AnsiConsole.MarkupLine($@"                              ");   
+           AnsiConsole.MarkupLine($@"");   
+           AnsiConsole.MarkupLine($@"    [white]     ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒[/]      ");   
+           AnsiConsole.MarkupLine($@"    [white]  ▒▒▒[/][chartreuse3]▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓[/][white]▒▒▒[/]   ");   
+           AnsiConsole.MarkupLine($@"    [blue]|[/][white]▒▓▓▓[/][chartreuse3]▓▓[/][lime]▒▒▒▒▒▒▒▒▒▒▒▒▒▒[/][chartreuse3]▓▓[/][white]▓▓▓░[/][blue]|[/] ");   
+           AnsiConsole.MarkupLine($@"    [blue]|▒▒▒▒[/][white]▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓[/][blue]░░░░|[/] ");   
+           AnsiConsole.MarkupLine($@"    [blue]|▒▒▒▒▒▒▒▒▒▒▒[/][orangered1]/▓▓\[/][blue]░░░░░░░░░░░|[/] ");   
+           AnsiConsole.MarkupLine($@"    [blue]|▒▒▒▒▒▒▒▒▒▒[/][orangered1]/▓▓▓▓\[/][blue]░░░░░░░░░░|[/] ");   
+           AnsiConsole.MarkupLine($@"    [blue]|▒▒▒▒▒▒▒▒▒[/][orangered1]/▓▓▓▓▓▓\[/][blue]░░░░░░░░░|[/] ");   
+           AnsiConsole.MarkupLine($@"    [blue]|▒▒▒▒▒▒▒▒[/][orangered1]/▓▓▓▓▓▓▓▓\[/][blue]░░░░░░░░|[/] ");   
+           AnsiConsole.MarkupLine($@"    [blue]|▒▒▒▒▒▒▒[/][orangered1]/▓▓▓▓/\▓▓▓▓\[/][blue]░░░░░░░|[/] ");   
+           AnsiConsole.MarkupLine($@"    [blue]|▒▒▒▒▒▒[/][orangered1]/▓▓▓▓/[/][blue]▒░\[/][orangered1]▓▓▓▓\[/][blue]░░░░░░|[/] ");   
+           AnsiConsole.MarkupLine($@"    [blue]|▒▒▒▒▒[/][orangered1]/▓▓▓▓/[/][blue]▒▒░░[/][orangered1]\▓▓▓▓\[/][blue]░░░░░|[/] ");   
+           AnsiConsole.MarkupLine($@"    [blue]|▒▒▒▒[/][orangered1]/▓▓▓▓/[/][blue]▒▒▒░░░[/][orangered1]\▓▓▓▓\[/][blue]░░░░|[/] ");   
+           AnsiConsole.MarkupLine($@"    [blue]|▒▒▒[/][orangered1]/▓▓▓▓/[/][blue]▒▒▒▒░░░░[/][orangered1]\▓▓▓▓\[/][blue]░░░|[/] ");   
+           AnsiConsole.MarkupLine($@"    [blue]|▒▒[/][orangered1]/▓▓▓▓/[/][blue]▒▒▒▒▒░░░░░\[/][orangered1]▓▓▓▓\[/][blue]░░|[/] ");   
+           AnsiConsole.MarkupLine($@"    [blue]|▒[/][orangered1]/▓▓▓▓/[/][blue]▒▒▒▒▒▒░░░░░░[/][orangered1]\▓▓▓▓\[/][blue]░|[/] ");   
+           AnsiConsole.MarkupLine($@"    [blue]   ▒▒▒▒▒▒▒▒▒▒▒░░░░░░░░░░░[/]     ");   
+           AnsiConsole.MarkupLine($@"");   
+           AnsiConsole.MarkupLine($@"Welcome to [bold]AzureDbUp[/]!  Let's get started!");
+           AnsiConsole.MarkupLine($@""); 
         }
 
     }

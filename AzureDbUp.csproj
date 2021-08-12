@@ -16,7 +16,6 @@
     <PackageReference Include="Microsoft.Data.SqlClient" Version="3.0.0" />
     <PackageReference Include="Microsoft.Graph" Version="3.33.0" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
-    <PackageReference Include="Npgsql" Version="5.0.7" />
     <PackageReference Include="Spectre.Console" Version="0.40.0" />
     <PackageReference Include="System.CommandLine.DragonFruit" Version="0.3.0-*" />   
     <PackageReference Include="System.CommandLine.Experimental" Version="0.3.0-*" />
