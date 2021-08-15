@@ -14,7 +14,7 @@ Update your database from anywhere! AzureDbUp is a dotnet console application th
  ![Azure DbUp demo](./img/AzureDbUp-demo.gif)
 ## DevOps
 
-To fully automate your database upgrades and track changes in source control, clone this repository and have developers commit scripts into the sql folder. Create an action or workflow that builds this application and executes the console application from within your CI/CD pipeline. 
+It's important to [get your database under source control](https://blog.codinghorror.com/get-your-database-under-version-control/) and fully automate your database upgrades. To get started, clone this repository and have developers commit scripts into the sql folder. Create an action or workflow that builds this application and executes the console application from within your CI/CD pipeline. 
 
 `dotnet AzureDbUp.dll --conn-string "Server=tcp:my-example-server.database.windows.net,1433;Initial Catalog=my-example-database" --db-engine "sqlserver" --auth-mode "azure"`
 
