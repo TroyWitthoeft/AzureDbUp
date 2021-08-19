@@ -25,7 +25,7 @@ using System.Collections;
 
 namespace AzureDbUp
 {
-    class Program
+    public class Program
     {
         /// <summary>
         /// AzureDbUp is a dotnet console application that updates your target sql database from the commnand line using DbUp.  
@@ -38,7 +38,7 @@ namespace AzureDbUp
         /// <param name="connString">Required. Database connection string. Example: Server=tcp:myserver.database.windows.net,1433;Initial Catalog=mydatabase</param>
         /// <param name="authMode">Required. Database connection authentication mode. Options: azure, sql</param>
         /// <param name="sqlFolder">Optional. Relative or absolute path to folder with sql scripts. Defaults to sql. Example: sql, C:\AzureDbUp\sql </param>
-        static async Task<int> Main(string dbEngine, string connString, string authMode, string sqlFolder = "sql")
+        async Task<int> Main(string dbEngine, string connString, string authMode, string sqlFolder = "sql")
         {
             //TODO:  Consider more user options for controlling DbUp behavior? Feature flags?  Silence dbup logs? What about Structured ILogger?
             
@@ -182,7 +182,7 @@ namespace AzureDbUp
             return authMode;
         }
 
-        private static async Task<string> TestConnect(string dbEngine, string connection, string authMode)
+        private async Task<string> TestConnect(string dbEngine, string connection, string authMode)
         {
             // Check azure ad connection
             if (authMode.Equals(AuthMode.AzureAuth,StringComparison.InvariantCultureIgnoreCase))
@@ -202,14 +202,14 @@ namespace AzureDbUp
             return connectErrorMessage;
         }
 
-        private static string MaskConnection(string connectionString)
+        public string MaskConnection(string connectionString)
         {
             // Regex magic.  Mask the password.
             var maskedConnection = Regex.Replace(connectionString, @"(?<=(?<![^;])pass\w*=).*?(?=;[\w\s]+=|$)", "*****", RegexOptions.IgnoreCase);
             return maskedConnection;
         }
 
-        private static Table GetConnSettingsTable(string dbEngine, string connectionString, string authMode)
+        private Table GetConnSettingsTable(string dbEngine, string connectionString, string authMode)
         {
             var maskedConnection = MaskConnection(connectionString);
             var displayConnectionString = maskedConnection;
