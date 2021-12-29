@@ -1,24 +1,22 @@
-# AzureDbUp
-
 ![Azure DbUp Logo](./img/AzureDbUp-logo.png)
 
-Update your database from anywhere! AzureDbUp is a dotnet console application that updates your target sql database from the command line using DbUp.  DbUp tracks which SQL scripts have been run already, and runs the change scripts that are needed to get your database up to date.  This console application pairs nicely with devops tools like Azure Devops and Github Actions so you can automate your database upgrades. 
+AzureDbUp is a lightweight, open-source, cross-platform, cross-database-engine console application that runs sql migration scripts to keep your databases in sync and up to date. Please compare AzureDbUp to products like RedGate ReadyRoll, Liquibase, and Flyway.    
 
-## Getting Started
+AzureDbUp was originally designed to automate database migration scripts as part of an Azure DevOps pipeline.  It has since been expanded to support multiple CI/CD systems and multiple database engines such as **PostgreSQL**, **MySql**, along with **Sql Server**.  AzureDbUp supports multiple authentication modes including **sql user** and **azure active directory**.  AzureDbUp has a local fully interactive experience. 
+ ![Azure DbUp demo](./img/AzureDbUp-demo.gif)
+
+And, AzureDbUp can be fully automated to trigger as part of CI/CD pipeline whenever developers check-in new sql change scripts.  To run in a fully automatic mode, supply answers to the interactive questions via the commandline. 
+
+`dotnet AzureDbUp.dll --conn-string "Server=tcp:my-example-server.database.windows.net,1433;Initial Catalog=my-example-database" --db-engine "sqlserver" --auth-mode "azure"`
+
+## Getting Started 
  - Prereq: Download and install [dotnet core](https://dotnet.microsoft.com/download).
  - Download the [latest release](https://github.com/TroyWitthoeft/AzureDbUp/releases/download/release-latest/release-latest.zip) of AzureDbUp. Unzip the files to a folder.
  - Edit and save your .sql scripts in the sql folder. 
  - Launch a terminal and call `dotnet AzureDbUp.dll`
  - Enter a connection string, choose your options, and let it rip!
 
- ![Azure DbUp demo](./img/AzureDbUp-demo.gif)
-## DevOps
 
-It's important to [get your database under source control](https://blog.codinghorror.com/get-your-database-under-version-control/) and fully automate your database upgrades. To get started, clone this repository and have developers commit scripts into the sql folder. Create an action or workflow that builds this application and executes the console application from within your CI/CD pipeline. 
-
-`dotnet AzureDbUp.dll --conn-string "Server=tcp:my-example-server.database.windows.net,1433;Initial Catalog=my-example-database" --db-engine "sqlserver" --auth-mode "azure"`
-
-Database changes will be safely recorded in both your git commit history and your execution logs. 
 ## Databases supported
 
 Azure DbUp currently supports: Azure Sql, MySql, PostgreSQL, CockoachDB 
@@ -28,7 +26,8 @@ Azure DbUp currently supports: Azure Sql, MySql, PostgreSQL, CockoachDB
 More support for other databases is planned. 
 ## Contributing
 
-Have a feedback?  Have a feature idea? Found a bug?  Pull requests are welcome and encouraged! 
+This is a small project and we encourage support?  Have a feedback, please share it?  
+Have a feature idea? Found a bug?  Pull requests are welcome and encouraged! 
 
 ## Project Dependencies
 
