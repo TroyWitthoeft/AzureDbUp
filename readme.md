@@ -26,7 +26,7 @@ Azure DbUp currently supports: Azure Sql, MySql, PostgreSQL, CockoachDB
 More support for other databases is planned. 
 ## Contributing
 
-This is a small project and we encourage support?  Have a feedback, please share it?  
+This is a small project and we encourage support!  Have a feedback, please share it?  
 Have a feature idea? Found a bug?  Pull requests are welcome and encouraged! 
 
 ## Project Dependencies
