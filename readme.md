@@ -1,13 +1,15 @@
 ![Azure DbUp Logo](./img/AzureDbUp-logo.png)
 
-AzureDbUp is a lightweight, open-source, cross-platform, cross-database-engine console application that runs sql migration scripts to keep your databases in sync and up to date. Please compare AzureDbUp to products like RedGate ReadyRoll, Liquibase, and Flyway.    
+AzureDbUp is a lightweight, open-source, cross-platform, cross-database-engine application that runs sql migration scripts to keep your databases in sync and up to date.  Please compare AzureDbUp to products like RedGate ReadyRoll, Liquibase, and Flyway.  AzureDbUp wraps the [DbUp](https://github.com/DbUp/DbUp) project in a console application that can be run as part of a continous deployment devops pipeline.  
 
-AzureDbUp was originally designed to automate database migration scripts as part of an Azure DevOps pipeline.  It has since been expanded to support multiple CI/CD systems and multiple database engines such as **PostgreSQL**, **MySql**, along with **Sql Server**.  AzureDbUp supports multiple authentication modes including **sql user** and **azure active directory**.  AzureDbUp has a local fully interactive experience. 
  ![Azure DbUp demo](./img/AzureDbUp-demo.gif)
 
-And, AzureDbUp can be fully automated to trigger as part of CI/CD pipeline whenever developers check-in new sql change scripts.  To run in a fully automatic mode, supply answers to the interactive questions via the commandline. 
+Above, the compiled application is running locally in interactive mode.  Answering the interactive questions ahead of time as commandline parameters allows AzureDbUp to be run unattended, as part of a deployment pipeline!
 
 `dotnet AzureDbUp.dll --conn-string "Server=tcp:my-example-server.database.windows.net,1433;Initial Catalog=my-example-database" --db-engine "sqlserver" --auth-mode "azure"`
+
+
+Through DbUp, AzureDbUp inherits support for multiple database engines such as **PostgreSQL**, **MySql**, along with **Sql Server**.  AzureDbUp also supports using **azure active directory** tokens as part of your connection string to help keep database credentials out of your code repository.  
 
 ## Getting Started 
  - Prereq: Download and install [dotnet core](https://dotnet.microsoft.com/download).
@@ -15,7 +17,6 @@ And, AzureDbUp can be fully automated to trigger as part of CI/CD pipeline whene
  - Edit and save your .sql scripts in the sql folder. 
  - Launch a terminal and call `dotnet AzureDbUp.dll`
  - Enter a connection string, choose your options, and let it rip!
-
 
 ## Databases supported
 
