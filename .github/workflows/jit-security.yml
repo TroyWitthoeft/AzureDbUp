@@ -12,12 +12,11 @@ jobs:
     timeout-minutes: 20
     steps:
     - name: enrichment
-      uses: jitsecurity-controls/jit-github-action@v2.6
+      uses: jitsecurity-controls/jit-github-action@v3.0
       with:
         docker_user: jit-bot
         docker_password: ${{fromJSON(github.event.inputs.client_payload).payload.container_registry_token}}
         security_control: registry.jit.io/control-enrichment-slim:latest
-        security_control_args: --path \${WORK_DIR:-.}
         dispatch_type: workflow
         context: ${{toJSON(fromJSON(github.event.inputs.client_payload).context)}}
         runner_setup: ${{toJSON(fromJSON(github.event.inputs.client_payload).context.job.runner.setup)}}
@@ -28,16 +27,16 @@ jobs:
     timeout-minutes: 20
     steps:
     - name: remediation-pr
-      uses: jitsecurity-controls/jit-github-action@v2.6
+      uses: jitsecurity-controls/jit-github-action@v3.0
       with:
         docker_user: jit-bot
         docker_password: ${{fromJSON(github.event.inputs.client_payload).payload.container_registry_token}}
         security_control: registry.jit.io/open-remediation-pr-alpine:latest
-        security_control_args: --github-token ${{fromJSON(github.event.inputs.client_payload).payload.github_token}} --fix-pr-config ${{fromJSON(github.event.inputs.client_payload).payload.fix_pr_config}} --output-file \$REPORT_FILE
         security_control_output_file: /opt/code/jit-report/results.json
         dispatch_type: workflow
         context: ${{toJSON(fromJSON(github.event.inputs.client_payload).context)}}
         runner_setup: ${{toJSON(fromJSON(github.event.inputs.client_payload).context.job.runner.setup)}}
+        inline_environment: -e GITHUB_TOKEN="${{fromJSON(github.event.inputs.client_payload).payload.github_token}}"
         
   secret-detection:
     if: fromJSON(github.event.inputs.client_payload).payload.workflow_job_name == 'secret-detection' && fromJSON(github.event.inputs.client_payload).payload.workflow_slug == 'workflow-secret-detection'
@@ -45,12 +44,11 @@ jobs:
     timeout-minutes: 20
     steps:
     - name: gitleaks
-      uses: jitsecurity-controls/jit-github-action@v2.6
+      uses: jitsecurity-controls/jit-github-action@v3.0
       with:
         docker_user: jit-bot
         docker_password: ${{fromJSON(github.event.inputs.client_payload).payload.container_registry_token}}
         security_control: registry.jit.io/control-gitleaks-alpine:latest
-        security_control_args: detect --config \$GITLEAKS_CONFIG_FILE_PATH --source \${WORK_DIR:-.} -v --report-format json --report-path \$REPORT_FILE --redact --no-git --exit-code 0
         security_control_output_file: /tmp/report.json
         dispatch_type: workflow
         context: ${{toJSON(fromJSON(github.event.inputs.client_payload).context)}}
@@ -62,12 +60,11 @@ jobs:
     timeout-minutes: 20
     steps:
     - name: osv-scanner
-      uses: jitsecurity-controls/jit-github-action@v2.6
+      uses: jitsecurity-controls/jit-github-action@v3.0
       with:
         docker_user: jit-bot
         docker_password: ${{fromJSON(github.event.inputs.client_payload).payload.container_registry_token}}
         security_control: registry.jit.io/control-osv-scanner-alpine:latest
-        security_control_args: --recursive \${WORK_DIR:-.}
         dispatch_type: workflow
         context: ${{toJSON(fromJSON(github.event.inputs.client_payload).context)}}
         runner_setup: ${{toJSON(fromJSON(github.event.inputs.client_payload).context.job.runner.setup)}}
@@ -78,12 +75,11 @@ jobs:
     timeout-minutes: 20
     steps:
     - name: nancy
-      uses: jitsecurity-controls/jit-github-action@v2.6
+      uses: jitsecurity-controls/jit-github-action@v3.0
       with:
         docker_user: jit-bot
         docker_password: ${{fromJSON(github.event.inputs.client_payload).payload.container_registry_token}}
         security_control: registry.jit.io/control-nancy-alpine:latest
-        security_control_args: 
         dispatch_type: workflow
         context: ${{toJSON(fromJSON(github.event.inputs.client_payload).context)}}
         runner_setup: ${{toJSON(fromJSON(github.event.inputs.client_payload).context.job.runner.setup)}}
@@ -94,12 +90,11 @@ jobs:
     timeout-minutes: 20
     steps:
     - name: npm-audit
-      uses: jitsecurity-controls/jit-github-action@v2.6
+      uses: jitsecurity-controls/jit-github-action@v3.0
       with:
         docker_user: jit-bot
         docker_password: ${{fromJSON(github.event.inputs.client_payload).payload.container_registry_token}}
         security_control: registry.jit.io/control-npm-audit-slim:latest
-        security_control_args: 
         security_control_output_file: /code/jit-report/enriched-audit-results.json
         dispatch_type: workflow
         context: ${{toJSON(fromJSON(github.event.inputs.client_payload).context)}}
@@ -111,12 +106,11 @@ jobs:
     timeout-minutes: 20
     steps:
     - name: semgrep
-      uses: jitsecurity-controls/jit-github-action@v2.6
+      uses: jitsecurity-controls/jit-github-action@v3.0
       with:
         docker_user: jit-bot
         docker_password: ${{fromJSON(github.event.inputs.client_payload).payload.container_registry_token}}
         security_control: registry.jit.io/control-semgrep-alpine:latest
-        security_control_args: --json --config=/semgrep-csharp-config.yml --metrics=off --severity=ERROR \${WORK_DIR:-.}
         dispatch_type: workflow
         context: ${{toJSON(fromJSON(github.event.inputs.client_payload).context)}}
         runner_setup: ${{toJSON(fromJSON(github.event.inputs.client_payload).context.job.runner.setup)}}
@@ -127,12 +121,11 @@ jobs:
     timeout-minutes: 20
     steps:
     - name: gosec
-      uses: jitsecurity-controls/jit-github-action@v2.6
+      uses: jitsecurity-controls/jit-github-action@v3.0
       with:
         docker_user: jit-bot
         docker_password: ${{fromJSON(github.event.inputs.client_payload).payload.container_registry_token}}
         security_control: registry.jit.io/control-gosec-alpine:latest
-        security_control_args: -fmt=json -severity=high \${WORK_DIR:-.}/...
         dispatch_type: workflow
         context: ${{toJSON(fromJSON(github.event.inputs.client_payload).context)}}
         runner_setup: ${{toJSON(fromJSON(github.event.inputs.client_payload).context.job.runner.setup)}}
@@ -143,12 +136,11 @@ jobs:
     timeout-minutes: 20
     steps:
     - name: semgrep
-      uses: jitsecurity-controls/jit-github-action@v2.6
+      uses: jitsecurity-controls/jit-github-action@v3.0
       with:
         docker_user: jit-bot
         docker_password: ${{fromJSON(github.event.inputs.client_payload).payload.container_registry_token}}
         security_control: registry.jit.io/control-semgrep-alpine:latest
-        security_control_args: --json --config=/semgrep-java-config.yml --metrics=off --severity=ERROR \${WORK_DIR:-.}
         dispatch_type: workflow
         context: ${{toJSON(fromJSON(github.event.inputs.client_payload).context)}}
         runner_setup: ${{toJSON(fromJSON(github.event.inputs.client_payload).context.job.runner.setup)}}
@@ -159,12 +151,11 @@ jobs:
     timeout-minutes: 20
     steps:
     - name: semgrep
-      uses: jitsecurity-controls/jit-github-action@v2.6
+      uses: jitsecurity-controls/jit-github-action@v3.0
       with:
         docker_user: jit-bot
         docker_password: ${{fromJSON(github.event.inputs.client_payload).payload.container_registry_token}}
         security_control: registry.jit.io/control-semgrep-alpine:latest
-        security_control_args: --json --config=/semgrep-ts-config.yml --metrics=off --severity=ERROR \${WORK_DIR:-.}
         dispatch_type: workflow
         context: ${{toJSON(fromJSON(github.event.inputs.client_payload).context)}}
         runner_setup: ${{toJSON(fromJSON(github.event.inputs.client_payload).context.job.runner.setup)}}
@@ -175,12 +166,11 @@ jobs:
     timeout-minutes: 20
     steps:
     - name: semgrep
-      uses: jitsecurity-controls/jit-github-action@v2.6
+      uses: jitsecurity-controls/jit-github-action@v3.0
       with:
         docker_user: jit-bot
         docker_password: ${{fromJSON(github.event.inputs.client_payload).payload.container_registry_token}}
         security_control: registry.jit.io/control-semgrep-alpine:latest
-        security_control_args: --json --config=/semgrep-kotlin-config.yml --metrics=off --severity=ERROR \${WORK_DIR:-.}
         dispatch_type: workflow
         context: ${{toJSON(fromJSON(github.event.inputs.client_payload).context)}}
         runner_setup: ${{toJSON(fromJSON(github.event.inputs.client_payload).context.job.runner.setup)}}
@@ -191,12 +181,11 @@ jobs:
     timeout-minutes: 20
     steps:
     - name: semgrep
-      uses: jitsecurity-controls/jit-github-action@v2.6
+      uses: jitsecurity-controls/jit-github-action@v3.0
       with:
         docker_user: jit-bot
         docker_password: ${{fromJSON(github.event.inputs.client_payload).payload.container_registry_token}}
         security_control: registry.jit.io/control-semgrep-alpine:latest
-        security_control_args: --json --config=/semgrep-python-config.yml --metrics=off --severity=ERROR \${WORK_DIR:-.}
         dispatch_type: workflow
         context: ${{toJSON(fromJSON(github.event.inputs.client_payload).context)}}
         runner_setup: ${{toJSON(fromJSON(github.event.inputs.client_payload).context.job.runner.setup)}}
@@ -207,12 +196,11 @@ jobs:
     timeout-minutes: 20
     steps:
     - name: semgrep
-      uses: jitsecurity-controls/jit-github-action@v2.6
+      uses: jitsecurity-controls/jit-github-action@v3.0
       with:
         docker_user: jit-bot
         docker_password: ${{fromJSON(github.event.inputs.client_payload).payload.container_registry_token}}
         security_control: registry.jit.io/control-semgrep-alpine:latest
-        security_control_args: --json --config=/semgrep-rust-config.yml --metrics=off --severity=ERROR \${WORK_DIR:-.}
         dispatch_type: workflow
         context: ${{toJSON(fromJSON(github.event.inputs.client_payload).context)}}
         runner_setup: ${{toJSON(fromJSON(github.event.inputs.client_payload).context.job.runner.setup)}}
@@ -223,12 +211,11 @@ jobs:
     timeout-minutes: 20
     steps:
     - name: semgrep
-      uses: jitsecurity-controls/jit-github-action@v2.6
+      uses: jitsecurity-controls/jit-github-action@v3.0
       with:
         docker_user: jit-bot
         docker_password: ${{fromJSON(github.event.inputs.client_payload).payload.container_registry_token}}
         security_control: registry.jit.io/control-semgrep-alpine:latest
-        security_control_args: --json --config=/semgrep-scala-config.yml --metrics=off --severity=ERROR \${WORK_DIR:-.}
         dispatch_type: workflow
         context: ${{toJSON(fromJSON(github.event.inputs.client_payload).context)}}
         runner_setup: ${{toJSON(fromJSON(github.event.inputs.client_payload).context.job.runner.setup)}}
@@ -239,12 +226,11 @@ jobs:
     timeout-minutes: 20
     steps:
     - name: semgrep
-      uses: jitsecurity-controls/jit-github-action@v2.6
+      uses: jitsecurity-controls/jit-github-action@v3.0
       with:
         docker_user: jit-bot
         docker_password: ${{fromJSON(github.event.inputs.client_payload).payload.container_registry_token}}
         security_control: registry.jit.io/control-semgrep-alpine:latest
-        security_control_args: --json --config=/semgrep-swift-config.yml --metrics=off --severity=ERROR \${WORK_DIR:-.}
         dispatch_type: workflow
         context: ${{toJSON(fromJSON(github.event.inputs.client_payload).context)}}
         runner_setup: ${{toJSON(fromJSON(github.event.inputs.client_payload).context.job.runner.setup)}}
